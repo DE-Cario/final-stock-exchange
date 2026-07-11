@@ -1,0 +1,423 @@
+/* public/css/style.css */
+/* ===========================================================
+   Campus Stock Exchange — E-Cell trading floor theme
+   Palette derived from the E-Cell mark: deep navy field,
+   icy cyan swirl, warm ticker gold for movement.
+   =========================================================== */
+
+:root {
+  --bg: #060f1c;
+  --bg-alt: #0a1c30;
+  --panel: #0e2136;
+  --panel-2: #14293f;
+  --panel-3: #182f48;
+  --border: rgba(159, 216, 221, 0.14);
+  --border-strong: rgba(159, 216, 221, 0.32);
+
+  --ice: #9fd8dd;
+  --ice-bright: #d3f3f4;
+  --ice-dim: #5f96a1;
+  --gold: #f2b545;
+  --gold-bright: #ffd579;
+
+  --up: #37d99b;
+  --down: #ff5d73;
+  --flat: #7d93a3;
+  --green: #37d99b; /* alias, used inline in a few markup files */
+  --red: #ff5d73;   /* alias, used inline in a few markup files */
+
+  --text: #eef7f8;
+  --muted: #8ba0af;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+
+  --font-display: 'Space Grotesk', 'Poppins', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; }
+
+::selection { background: var(--ice); color: #04121b; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--text);
+  min-height: 100vh;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(900px 460px at 8% -6%, rgba(159, 216, 221, 0.10), transparent 60%),
+    radial-gradient(700px 420px at 100% 0%, rgba(242, 181, 69, 0.06), transparent 55%),
+    linear-gradient(180deg, #071426 0%, #060f1c 55%, #050c17 100%);
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* faint trading-terminal grid, purely atmospheric */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(159, 216, 221, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(159, 216, 221, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 75%);
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 16px; position: relative; z-index: 1; }
+
+h1, h2, h3 { margin: 0 0 8px 0; font-family: var(--font-display); letter-spacing: 0.01em; }
+
+a { color: var(--ice); text-decoration: none; }
+a:hover { color: var(--ice-bright); }
+
+.muted { color: var(--muted); font-size: 0.85rem; }
+.flex { display: flex; gap: 10px; align-items: center; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+.center { text-align: center; }
+
+/* ===========================================================
+   Ticker tape — signature motif, scrolls the mock market strip
+   =========================================================== */
+.ticker-tape {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #081627, #0d2138 50%, #081627);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  height: 34px;
+  z-index: 1;
+}
+.ticker-tape::before, .ticker-tape::after {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0; width: 36px; z-index: 2;
+}
+.ticker-tape::before { left: 0; background: linear-gradient(90deg, #081627, transparent); }
+.ticker-tape::after { right: 0; background: linear-gradient(270deg, #081627, transparent); }
+.ticker-track {
+  position: absolute;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  height: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--ice);
+  animation: ticker-scroll 34s linear infinite;
+  padding-left: 100%;
+}
+.ticker-track span { opacity: 0.85; }
+.ticker-track .tk-up { color: var(--up); }
+.ticker-track .tk-down { color: var(--down); }
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+}
+
+/* ===========================================================
+   Hero (index.html)
+   =========================================================== */
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  background: linear-gradient(135deg, rgba(159,216,221,0.07), rgba(242,181,69,0.03) 60%, transparent);
+  border-radius: 20px;
+  padding: 28px;
+  margin: 4px 0 22px 0;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  right: -60px; top: -60px;
+  width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(159,216,221,0.14), transparent 70%);
+  pointer-events: none;
+}
+.logo-large {
+  width: 128px;
+  height: 128px;
+  min-width: 128px;
+  border-radius: 20px;
+  object-fit: contain;
+  background: radial-gradient(circle at 35% 30%, rgba(159,216,221,0.14), rgba(6,15,28,0.4));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.55), inset 0 0 0 1px var(--border-strong);
+  position: relative;
+}
+.logo-large::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 26px;
+  background: conic-gradient(from 0deg, var(--ice) 0deg, transparent 90deg, transparent 270deg, var(--gold) 340deg, var(--ice) 360deg);
+  opacity: 0.35;
+  filter: blur(10px);
+  z-index: -1;
+  animation: spin-slow 12s linear infinite;
+}
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .logo-large::before { animation: none; } }
+
+.hero h1 { margin: 0 0 8px 0; font-size: 2rem; }
+.hero p { margin: 0 0 16px 0; color: var(--muted); max-width: 46ch; }
+.cta { display:flex; gap:12px; flex-wrap: wrap; }
+.btn-cta { padding: 13px 20px; border-radius: var(--radius-sm); font-weight: 700; font-size: 0.95rem; font-family: var(--font-display); }
+
+/* subtle hover on any button */
+button:hover { transform: translateY(-2px); transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease; }
+button:active { transform: translateY(0); }
+
+@media (max-width:700px) {
+  .hero { flex-direction: column; text-align: center; padding: 22px; }
+  .logo-large { width: 100px; height: 100px; min-width: 100px; }
+}
+
+/* ===========================================================
+   Header bar / branding
+   =========================================================== */
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(2,8,20,0.35);
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.logo-img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: radial-gradient(circle at 35% 30%, rgba(159,216,221,0.12), rgba(6,15,28,0.3));
+  padding: 6px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.site-title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text); letter-spacing: 0.01em; }
+
+.title-fun {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  background: linear-gradient(90deg, var(--ice-bright), var(--ice) 55%, var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.season-banner {
+  background: linear-gradient(90deg, rgba(159,216,221,0.16), rgba(242,181,69,0.10));
+  border: 1px solid var(--border-strong);
+  color: var(--ice-bright);
+  padding: 11px 16px;
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.timer {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  background: var(--panel-3);
+  border: 1px solid var(--border);
+  color: var(--gold-bright);
+  padding: 7px 16px;
+  border-radius: 20px;
+}
+
+/* ===========================================================
+   Cards & panels — clipped corner nods to the ECELL wordmark's
+   sliced letterforms
+   =========================================================== */
+.card {
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+  position: relative;
+  transition: border-color 160ms ease;
+}
+.card:hover { border-color: var(--border-strong); }
+.card h3 { font-size: 1.02rem; }
+
+.stat-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.stat-box {
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+  border-radius: var(--radius);
+  padding: 13px 18px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--ice);
+  flex: 1;
+  min-width: 130px;
+}
+.stat-box .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.stat-box .value { font-family: var(--font-mono); font-size: 1.35rem; font-weight: 700; margin-top: 2px; }
+
+/* ===========================================================
+   Market list
+   =========================================================== */
+.company-list { display: flex; flex-direction: column; gap: 10px; }
+.company-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.company-row:hover { border-color: var(--border-strong); background: #1a3350; }
+.company-name { display: flex; align-items: center; gap: 10px; font-weight: 700; min-width: 180px; font-family: var(--font-display); }
+.company-icon { font-size: 1.4rem; }
+.price { font-family: var(--font-mono); font-weight: 700; font-size: 1.08rem; }
+.pct-up { color: var(--up); font-weight: 700; font-family: var(--font-mono); }
+.pct-down { color: var(--down); font-weight: 700; font-family: var(--font-mono); }
+.pct-flat { color: var(--flat); font-family: var(--font-mono); }
+
+.trade-controls { display: flex; gap: 6px; align-items: center; }
+.qty-input {
+  width: 55px;
+  padding: 7px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: #081525;
+  color: var(--text);
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+/* ===========================================================
+   Buttons
+   =========================================================== */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 9px;
+  padding: 9px 15px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  font-family: var(--font-body);
+}
+.btn-buy { background: linear-gradient(135deg, var(--up), #1fb886); color: #04241a; box-shadow: 0 4px 14px rgba(55,217,155,0.18); }
+.btn-sell { background: linear-gradient(135deg, var(--down), #e13f57); color: #2a0509; box-shadow: 0 4px 14px rgba(255,93,115,0.18); }
+.btn-primary { background: linear-gradient(90deg, var(--ice), var(--ice-bright)); color: #05222a; box-shadow: 0 4px 14px rgba(159,216,221,0.18); }
+.btn-secondary { background: var(--panel-3); color: var(--text); border: 1px solid var(--border-strong); }
+.btn-danger { background: linear-gradient(135deg, var(--down), #c22e46); color: #2a0509; }
+button:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+/* ===========================================================
+   News feed
+   =========================================================== */
+.news-feed { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.news-item { background: var(--panel-3); border-left: 3px solid var(--gold); padding: 9px 11px; border-radius: 8px; font-size: 0.9rem; }
+.news-item .ts { color: var(--muted); font-size: 0.75rem; font-family: var(--font-mono); }
+
+/* ===========================================================
+   Login / forms
+   =========================================================== */
+.login-box {
+  max-width: 380px;
+  margin: 48px auto;
+  text-align: center;
+}
+input[type=text], input[type=password], input[type=number], textarea, select {
+  width: 100%;
+  padding: 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: #081525;
+  color: var(--text);
+  margin-bottom: 10px;
+  font-size: 1rem;
+  font-family: var(--font-body);
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--ice);
+  box-shadow: 0 0 0 3px rgba(159,216,221,0.18);
+}
+input[id*="pin" i], input[id*="Pin"] { font-family: var(--font-mono); letter-spacing: 0.2em; text-align: center; }
+
+/* ===========================================================
+   Tables / leaderboard
+   =========================================================== */
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--font-display); }
+
+.leaderboard-row { display: flex; justify-content: space-between; padding: 9px 10px; border-radius: 8px; }
+.leaderboard-row:nth-child(odd) { background: var(--panel-3); }
+.rank { font-family: var(--font-display); font-weight: 700; color: var(--gold-bright); width: 30px; }
+
+/* ===========================================================
+   Toast
+   =========================================================== */
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--panel-2); border: 1px solid var(--ice);
+  padding: 11px 20px; border-radius: 30px; font-weight: 700;
+  box-shadow: 0 10px 30px rgba(2,8,20,0.5);
+  z-index: 999;
+}
+.toast.error { border-color: var(--down); color: var(--down); }
+.toast.success { border-color: var(--up); color: var(--up); }
+
+.flash-news {
+  animation: flash 1s ease-in-out 2;
+}
+@keyframes flash {
+  0%, 100% { background: var(--panel-3); }
+  50% { background: rgba(159,216,221,0.28); }
+}
+
+.big-price { font-family: var(--font-mono); font-size: 2rem; font-weight: 700; }
+
+/* ===========================================================
+   Footer brand strip
+   =========================================================== */
+.site-footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 22px 10px 10px;
+  letter-spacing: 0.03em;
+}
+.site-footer b { color: var(--ice); font-family: var(--font-display); }

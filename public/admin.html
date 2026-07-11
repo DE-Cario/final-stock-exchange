@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard - Campus Stock Exchange</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+
+  <div id="loginScreen" class="login-box">
+    <h1 class="title-fun">🛠️ Admin Login</h1>
+    <div class="card">
+      <input type="password" id="adminPassword" placeholder="Admin password">
+      <button class="btn-primary" style="width:100%" onclick="adminLogin()">Login</button>
+      <p id="loginError" style="color:var(--red)"></p>
+      <p class="muted">Default password is <code>campus123</code> unless changed via ADMIN_PASSWORD env var.</p>
+    </div>
+  </div>
+
+  <div id="dashboard" style="display:none">
+    <div class="header-bar">
+      <div class="site-header">
+        <img src="img/logo.png" alt="E-Cell Logo" class="logo-img">
+        <div>
+          <div class="site-title">Admin • Campus Stock Exchange</div>
+          <div class="muted">Organizer controls</div>
+        </div>
+      </div>
+      <div class="timer" id="statusBadge">lobby</div>
+    </div>
+
+    <div class="ticker-tape" aria-hidden="true">
+      <div class="ticker-track">
+        <span>NIFTY100 <span class="tk-up">▲ 2.4%</span></span>
+        <span>CANTEEN.CO <span class="tk-up">▲ 5.1%</span></span>
+        <span>WIFI.INC <span class="tk-down">▼ 1.8%</span></span>
+        <span>HOSTEL.LTD <span class="pct-flat">— 0.0%</span></span>
+        <span>FEST.EXCH <span class="tk-up">▲ 8.6%</span></span>
+        <span>LIBRARY.CO <span class="tk-down">▼ 3.2%</span></span>
+        <span>ECELL.IPO <span class="tk-up">▲ 12.0%</span></span>
+        <span>NIFTY100 <span class="tk-up">▲ 2.4%</span></span>
+        <span>CANTEEN.CO <span class="tk-up">▲ 5.1%</span></span>
+        <span>WIFI.INC <span class="tk-down">▼ 1.8%</span></span>
+        <span>HOSTEL.LTD <span class="pct-flat">— 0.0%</span></span>
+      </div>
+    </div>
+
+    <!-- GAME CONTROLS -->
+    <div class="card">
+      <h3>🎮 Game Controls</h3>
+      <div class="season-banner" id="seasonBanner">Not started</div>
+      <div class="flex" style="flex-wrap:wrap">
+        <button class="btn-primary" onclick="callAdmin('/api/admin/game/start','POST')">▶️ Start Game</button>
+        <button class="btn-secondary" onclick="callAdmin('/api/admin/game/pause','POST')">⏸️ Pause</button>
+        <button class="btn-secondary" onclick="callAdmin('/api/admin/game/resume','POST')">▶️ Resume</button>
+        <button class="btn-secondary" onclick="callAdmin('/api/admin/game/advance-block','POST')">⏭️ Advance Block</button>
+        <button class="btn-danger" onclick="callAdmin('/api/admin/game/end','POST')">🏁 End Game</button>
+        <button class="btn-danger" onclick="resetGame()">🔄 Start From Beginning</button>
+      </div>
+    </div>
+
+    <!-- SURPRISE EVENT -->
+    <div class="card">
+      <h3>📰 Trigger Surprise Event</h3>
+      <select id="surpriseCompany"></select>
+      <input type="text" id="surpriseHeadline" placeholder="Headline e.g. WiFi down in Block C">
+      <input type="number" id="surprisePct" placeholder="% change e.g. -20 or 15" min="-30" max="30">
+      <button class="btn-primary" onclick="triggerSurprise()">Fire Event</button>
+    </div>
+
+    <div class="grid-2">
+      <!-- REPORTS -->
+      <div class="card">
+        <h3>📄 Reports</h3>
+        <p class="muted">Teams are created by students through signup. Use these exports for offline review.</p>
+        <div class="flex" style="margin-top:8px">
+          <a href="/api/admin/export/teams.csv" target="_blank"><button class="btn-secondary">⬇️ Export Teams CSV</button></a>
+          <a href="/api/admin/export/results.csv" target="_blank"><button class="btn-secondary">⬇️ Export Results CSV</button></a>
+        </div>
+
+      <!-- LIVE LEADERBOARD -->
+      <div class="card">
+        <h3>🏆 Live Leaderboard</h3>
+        <div id="adminLeaderboard"></div>
+      </div>
+    </div>
+
+    <!-- TEAM HOLDINGS -->
+    <div class="card">
+      <h3>📊 Team Stock Holdings</h3>
+      <p class="muted">View what stocks each team holds. Useful for targeting surprise events strategically.</p>
+      <div id="teamHoldingsBox" style="overflow-x: auto;"></div>
+    </div>
+
+    <!-- CALENDAR EDITOR -->
+    <div class="card">
+      <h3>📅 Edit Seasonal Calendar</h3>
+      <p class="muted">Editable only while game status is "lobby". Add/remove blocks and moves freely, then click Save.</p>
+      <div id="calendarEditor"></div>
+      <button class="btn-secondary" onclick="addBlock()">+ Add Season Block</button>
+      <button class="btn-primary" onclick="saveCalendar()">💾 Save Calendar</button>
+      <p id="calendarMsg"></p>
+    </div>
+
+    <!-- COMPANIES EDITOR -->
+    <div class="card">
+      <h3>🏢 Edit Companies</h3>
+      <p class="muted">Editable only while game status is "lobby".</p>
+      <div id="companiesEditor"></div>
+      <button class="btn-secondary" onclick="addCompany()">+ Add Company</button>
+      <button class="btn-primary" onclick="saveCompanies()">💾 Save Companies</button>
+      <p id="companiesMsg"></p>
+    </div>
+
+    <!-- AWARDS -->
+    <div class="card">
+      <h3>🥇 Awards (live preview, final once game ends)</h3>
+      <button class="btn-secondary" onclick="loadAwards()">Refresh Awards</button>
+      <div id="awardsBox" style="margin-top:10px"></div>
+    </div>
+
+  </div>
+</div>
+<script src="js/admin.js"></script>
+</body>
+</html>

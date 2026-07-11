@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: campus-stock-exchange
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/state
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ADMIN_PASSWORD
+        value: change-me

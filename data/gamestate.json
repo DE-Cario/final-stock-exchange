@@ -1,0 +1,187 @@
+{
+  "status": "lobby",
+  "companies": {
+    "canteen": {
+      "id": "canteen",
+      "name": "Canteen & Co.",
+      "icon": "🍔",
+      "startPrice": 100,
+      "price": 100
+    },
+    "mess": {
+      "id": "mess",
+      "name": "Mess Hall Holdings",
+      "icon": "🍛",
+      "startPrice": 100,
+      "price": 100
+    },
+    "wifi": {
+      "id": "wifi",
+      "name": "WiFi Networks Ltd.",
+      "icon": "📶",
+      "startPrice": 100,
+      "price": 100
+    },
+    "sports": {
+      "id": "sports",
+      "name": "Groundsmen Sports Facilities",
+      "icon": "⚽",
+      "startPrice": 100,
+      "price": 100
+    },
+    "library": {
+      "id": "library",
+      "name": "Library Inc.",
+      "icon": "📚",
+      "startPrice": 100,
+      "price": 100
+    },
+    "bus": {
+      "id": "bus",
+      "name": "Bus Transport Corp.",
+      "icon": "🚌",
+      "startPrice": 100,
+      "price": 100
+    },
+    "xerox": {
+      "id": "xerox",
+      "name": "Xerox & Stationery Co.",
+      "icon": "🖨️",
+      "startPrice": 110,
+      "price": 110
+    },
+    "placement": {
+      "id": "placement",
+      "name": "Placement Cell Ventures",
+      "icon": "💼",
+      "startPrice": 125,
+      "price": 125
+    },
+    "fest": {
+      "id": "fest",
+      "name": "Fest & Events Co.",
+      "icon": "🎉",
+      "startPrice": 125,
+      "price": 125
+    },
+    "attendance": {
+      "id": "attendance",
+      "name": "Attendance Watch Holdings",
+      "icon": "📋",
+      "startPrice": 85,
+      "price": 85
+    },
+    "av": {
+      "id": "av",
+      "name": "AV & Projector Services",
+      "icon": "📽️",
+      "startPrice": 115,
+      "price": 115
+    }
+  },
+  "calendar": [
+    {
+      "label": "June-July: Admissions",
+      "durationMinutes": 12,
+      "moves": [
+        {
+          "companyId": "bus",
+          "pct": 15
+        },
+        {
+          "companyId": "xerox",
+          "pct": 10
+        },
+        {
+          "companyId": "library",
+          "pct": -10
+        }
+      ]
+    },
+    {
+      "label": "Aug-Sep: Regular Semester",
+      "durationMinutes": 12,
+      "moves": [
+        {
+          "companyId": "canteen",
+          "pct": 8
+        },
+        {
+          "companyId": "mess",
+          "pct": 8
+        }
+      ]
+    },
+    {
+      "label": "October: Fest Season",
+      "durationMinutes": 12,
+      "moves": [
+        {
+          "companyId": "fest",
+          "pct": 25
+        },
+        {
+          "companyId": "av",
+          "pct": 15
+        },
+        {
+          "companyId": "attendance",
+          "pct": -15
+        }
+      ]
+    },
+    {
+      "label": "Nov-Dec: Exam Season",
+      "durationMinutes": 12,
+      "moves": [
+        {
+          "companyId": "library",
+          "pct": 30
+        },
+        {
+          "companyId": "canteen",
+          "pct": 12
+        },
+        {
+          "companyId": "sports",
+          "pct": -15
+        },
+        {
+          "companyId": "bus",
+          "pct": -10
+        }
+      ]
+    },
+    {
+      "label": "Jan-Mar: Results, Placements & Sports",
+      "durationMinutes": 12,
+      "moves": [
+        {
+          "companyId": "placement",
+          "pct": 25
+        },
+        {
+          "companyId": "sports",
+          "pct": 20
+        },
+        {
+          "companyId": "library",
+          "pct": -15
+        }
+      ]
+    }
+  ],
+  "currentBlockIndex": -1,
+  "blockStartedAt": null,
+  "blockDriftStep": {},
+  "blockTicksRemaining": 0,
+  "blockHistory": [],
+  "sessionStartedAt": null,
+  "pausedAt": null,
+  "totalPausedMs": 0,
+  "durationMinutesPlanned": 60,
+  "news": [],
+  "surpriseEvents": [],
+  "teams": {},
+  "nextTeamNum": 1
+}

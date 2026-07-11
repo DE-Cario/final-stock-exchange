@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projector View - Campus Stock Exchange</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-size: 1.15rem; }
+  .big-banner { font-size: 1.6rem; padding: 18px; }
+  .ticker-price { font-size: 1.6rem; }
+  #breakingNews {
+    display:none; font-size: 1.4rem; font-weight: 700; text-align:center;
+    padding: 18px; border-radius: 14px; margin-bottom: 14px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-bright));
+    color: #2a1a00;
+    font-family: var(--font-display);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="header-bar site-header">
+    <img src="img/logo.png" alt="E-Cell Logo" class="logo-img">
+    <div style="flex:1">
+      <div class="site-title" style="font-size:1.6rem">Campus Stock Exchange</div>
+      <div class="muted">Live market — project for the event</div>
+    </div>
+    <div class="timer" id="timer" style="font-size:1.6rem">--:--</div>
+  </header>
+
+  <div class="ticker-tape" aria-hidden="true">
+    <div class="ticker-track" style="font-size:1rem;">
+      <span>NIFTY100 <span class="tk-up">▲ 2.4%</span></span>
+      <span>CANTEEN.CO <span class="tk-up">▲ 5.1%</span></span>
+      <span>WIFI.INC <span class="tk-down">▼ 1.8%</span></span>
+      <span>HOSTEL.LTD <span class="pct-flat">— 0.0%</span></span>
+      <span>FEST.EXCH <span class="tk-up">▲ 8.6%</span></span>
+      <span>LIBRARY.CO <span class="tk-down">▼ 3.2%</span></span>
+      <span>ECELL.IPO <span class="tk-up">▲ 12.0%</span></span>
+      <span>NIFTY100 <span class="tk-up">▲ 2.4%</span></span>
+      <span>CANTEEN.CO <span class="tk-up">▲ 5.1%</span></span>
+      <span>WIFI.INC <span class="tk-down">▼ 1.8%</span></span>
+      <span>HOSTEL.LTD <span class="pct-flat">— 0.0%</span></span>
+    </div>
+  </div>
+
+  <div class="season-banner big-banner" id="seasonBanner">Loading...</div>
+  <div id="breakingNews"></div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>💹 Live Prices</h2>
+      <div class="company-list" id="companyList"></div>
+    </div>
+    <div class="card">
+      <h2>🏆 Leaderboard (Top 10)</h2>
+      <div id="leaderboard"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/projector.js"></script>
+</body>
+</html>

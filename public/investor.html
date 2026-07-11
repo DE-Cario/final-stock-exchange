@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Investor View - Campus Stock Exchange</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container" id="app">
+
+  <header class="header-bar site-header">
+    <img src="img/logo.png" alt="E-Cell Logo" class="logo-img">
+    <div>
+      <div class="site-title">Campus Stock Exchange</div>
+      <div class="muted">Trade with your team — make the best portfolio!</div>
+    </div>
+  </header>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="login-box">
+    <h1 class="title-fun">📈 Welcome, Investor</h1>
+    <p class="muted">Enter your team name and PIN to start trading.</p>
+    <div class="card">
+      <input type="text" id="teamNameInput" placeholder="Team Name">
+      <input type="text" id="pinInput" placeholder="6-digit PIN" maxlength="6">
+      <button class="btn-primary" style="width:100%" onclick="login()">Login</button>
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button class="btn-secondary" style="flex:1" onclick="showSignup()">Create Team</button>
+      </div>
+      <p id="loginError" class="muted" style="color:var(--red)"></p>
+    </div>
+    
+    <div id="signupBox" class="card" style="display:none; margin-top:12px;">
+      <h3>Create a Team</h3>
+      <input type="text" id="teamNameSignup" placeholder="Team Name">
+      <input type="text" id="pinSignup" placeholder="Choose a 6-digit PIN" maxlength="6">
+      <div style="display:flex; gap:8px;">
+        <button class="btn-primary" style="flex:1" onclick="signup()">Create</button>
+        <button class="btn-secondary" style="flex:1" onclick="showLogin()">Cancel</button>
+      </div>
+      <p id="signupError" class="muted" style="color:var(--red)"></p>
+      <p id="signupConfirm" class="muted" style="color:var(--green); display:none;">Remember your PIN and do not share it with others.</p>
+    </div>
+  </div>
+
+  <!-- MAIN GAME SCREEN -->
+  <div id="gameScreen" style="display:none">
+    <div class="header-bar">
+      <div class="title-fun">📈 Campus Stock Exchange</div>
+      <div class="timer" id="timer">--:--</div>
+    </div>
+
+    <div class="ticker-tape" aria-hidden="true">
+      <div class="ticker-track">
+        <span>NIFTY100 <span class="tk-up">▲ 2.4%</span></span>
+        <span>CANTEEN.CO <span class="tk-up">▲ 5.1%</span></span>
+        <span>WIFI.INC <span class="tk-down">▼ 1.8%</span></span>
+        <span>HOSTEL.LTD <span class="pct-flat">— 0.0%</span></span>
+        <span>FEST.EXCH <span class="tk-up">▲ 8.6%</span></span>
+        <span>LIBRARY.CO <span class="tk-down">▼ 3.2%</span></span>
+        <span>ECELL.IPO <span class="tk-up">▲ 12.0%</span></span>
+        <span>NIFTY100 <span class="tk-up">▲ 2.4%</span></span>
+        <span>CANTEEN.CO <span class="tk-up">▲ 5.1%</span></span>
+        <span>WIFI.INC <span class="tk-down">▼ 1.8%</span></span>
+        <span>HOSTEL.LTD <span class="pct-flat">— 0.0%</span></span>
+      </div>
+    </div>
+
+    <div class="season-banner" id="seasonBanner">Loading season...</div>
+
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="label">Team</div>
+        <div class="value" id="teamNameDisplay">-</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Cash</div>
+        <div class="value" id="cashDisplay">₹0</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Holdings Value</div>
+        <div class="value" id="holdingsValueDisplay">₹0</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Total Portfolio</div>
+        <div class="value" id="totalValueDisplay">₹0</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <h3>💹 Market</h3>
+          <div class="company-list" id="companyList"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3>📦 Your Holdings</h3>
+          <div id="holdingsList" class="muted">No holdings yet.</div>
+        </div>
+        <div class="card">
+          <h3>📰 Market News</h3>
+          <div class="news-feed" id="newsFeed"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" style="display:none"></div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/investor.js"></script>
+</body>
+</html>
