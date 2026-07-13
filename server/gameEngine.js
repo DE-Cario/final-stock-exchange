@@ -165,9 +165,10 @@ class GameEngine {
     return null;
   }
 
-  createTeam(teamName, pin) {
+  createTeam(teamName, pin, teamSize) {
     if (!teamName || !pin) return { ok: false, error: 'teamName and pin required' };
     const name = String(teamName).trim();
+    const size = Math.max(1, parseInt(teamSize, 10) || 1);
     // prevent duplicate names (case-insensitive)
     const exists = Object.values(this.state.teams).some((t) => t.teamName.toLowerCase() === name.toLowerCase());
     if (exists) return { ok: false, error: 'Team name already taken' };
@@ -182,6 +183,8 @@ class GameEngine {
       teamId,
       teamName: name,
       pin: storedPin,
+      teamSize: size,
+      memberCount: size,
       cash: STARTING_CASH,
       holdings: {},
       trades: []
@@ -191,7 +194,7 @@ class GameEngine {
   }
 
   // admin: update team name or PIN
-  updateTeam(teamId, { teamName, pin }) {
+  updateTeam(teamId, { teamName, pin, teamSize }) {
     const team = this.state.teams[teamId];
     if (!team) return { ok: false, error: 'Team not found' };
     if (teamName) {
@@ -204,6 +207,11 @@ class GameEngine {
     if (pin) {
       if (!/^\d{6}$/.test(String(pin).trim())) return { ok: false, error: 'PIN must be exactly 6 digits' };
       team.pin = hashPinValue(pin);
+    }
+    if (teamSize !== undefined) {
+      const size = Math.max(1, parseInt(teamSize, 10) || 1);
+      team.teamSize = size;
+      team.memberCount = size;
     }
     this.persist();
     return { ok: true };
@@ -235,6 +243,8 @@ class GameEngine {
     return {
       teamId: team.teamId,
       teamName: team.teamName,
+      teamSize: team.teamSize || team.memberCount || 1,
+      memberCount: team.memberCount || team.teamSize || 1,
       cash: Math.round(team.cash * 100) / 100,
       holdings,
       holdingsValue: Math.round(holdingsValue * 100) / 100,
@@ -572,8 +582,8 @@ class GameEngine {
 
   exportTeamsCSV() {
     const rows = Object.values(this.state.teams);
-    const header = 'Team Name,Team ID\n';
-    const body = rows.map((t) => `${t.teamName},${t.teamId}`).join('\n');
+    const header = 'Team Name,Team ID,Team Size\n';
+    const body = rows.map((t) => `${t.teamName},${t.teamId},${t.teamSize || t.memberCount || 1}`).join('\n');
     return header + body;
   }
 }

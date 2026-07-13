@@ -24,13 +24,16 @@
   <div id="dashboard" style="display:none">
     <div class="header-bar">
       <div class="site-header">
-        <img src="img/logo.png" alt="E-Cell Logo" class="logo-img">
+        <img src="img/admin-icon.svg" alt="Admin Icon" class="dashboard-icon">
         <div>
           <div class="site-title">Admin • Campus Stock Exchange</div>
           <div class="muted">Organizer controls</div>
         </div>
       </div>
-      <div class="timer" id="statusBadge">lobby</div>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <div class="timer" id="statusBadge">lobby</div>
+        <button class="btn-secondary" onclick="adminLogout()">↩ Logout</button>
+      </div>
     </div>
 
     <div class="ticker-tape" aria-hidden="true">
@@ -49,82 +52,128 @@
       </div>
     </div>
 
-    <!-- GAME CONTROLS -->
-    <div class="card">
-      <h3>🎮 Game Controls</h3>
-      <div class="season-banner" id="seasonBanner">Not started</div>
-      <div class="flex" style="flex-wrap:wrap">
-        <button class="btn-primary" onclick="callAdmin('/api/admin/game/start','POST')">▶️ Start Game</button>
-        <button class="btn-secondary" onclick="callAdmin('/api/admin/game/pause','POST')">⏸️ Pause</button>
-        <button class="btn-secondary" onclick="callAdmin('/api/admin/game/resume','POST')">▶️ Resume</button>
-        <button class="btn-secondary" onclick="callAdmin('/api/admin/game/advance-block','POST')">⏭️ Advance Block</button>
-        <button class="btn-danger" onclick="callAdmin('/api/admin/game/end','POST')">🏁 End Game</button>
-        <button class="btn-danger" onclick="resetGame()">🔄 Start From Beginning</button>
-      </div>
-    </div>
+    <div class="dashboard-shell">
 
-    <!-- SURPRISE EVENT -->
-    <div class="card">
-      <h3>📰 Trigger Surprise Event</h3>
-      <select id="surpriseCompany"></select>
-      <input type="text" id="surpriseHeadline" placeholder="Headline e.g. WiFi down in Block C">
-      <input type="number" id="surprisePct" placeholder="% change e.g. -20 or 15" min="-30" max="30">
-      <button class="btn-primary" onclick="triggerSurprise()">Fire Event</button>
-    </div>
-
-    <div class="grid-2">
-      <!-- REPORTS -->
-      <div class="card">
-        <h3>📄 Reports</h3>
-        <p class="muted">Teams are created by students through signup. Use these exports for offline review.</p>
-        <div class="flex" style="margin-top:8px">
-          <a href="/api/admin/export/teams.csv" target="_blank"><button class="btn-secondary">⬇️ Export Teams CSV</button></a>
-          <a href="/api/admin/export/results.csv" target="_blank"><button class="btn-secondary">⬇️ Export Results CSV</button></a>
+      <div class="dash-section">
+        <div class="dash-section-title">
+          <span class="label">🎮 Live Game Control</span>
+          <span class="rule"></span>
         </div>
-
-      <!-- LIVE LEADERBOARD -->
-      <div class="card">
-        <h3>🏆 Live Leaderboard</h3>
-        <div id="adminLeaderboard"></div>
+        <div class="card dashboard-hero">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Organizer controls</p>
+              <h3>Game Controls</h3>
+            </div>
+            <div class="pill" id="statusBadge">lobby</div>
+          </div>
+          <div class="season-banner" id="seasonBanner">Not started</div>
+          <div class="action-pills">
+            <button class="btn-primary" onclick="callAdmin('/api/admin/game/start','POST')">▶️ Start Game</button>
+            <button class="btn-secondary" onclick="callAdmin('/api/admin/game/pause','POST')">⏸️ Pause</button>
+            <button class="btn-secondary" onclick="callAdmin('/api/admin/game/resume','POST')">▶️ Resume</button>
+            <button class="btn-secondary" onclick="callAdmin('/api/admin/game/advance-block','POST')">⏭️ Advance Block</button>
+            <button class="btn-danger" onclick="callAdmin('/api/admin/game/end','POST')">🏁 End Game</button>
+            <button class="btn-danger" onclick="resetGame()">🔄 Start From Beginning</button>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- TEAM HOLDINGS -->
-    <div class="card">
-      <h3>📊 Team Stock Holdings</h3>
-      <p class="muted">View what stocks each team holds. Useful for targeting surprise events strategically.</p>
-      <div id="teamHoldingsBox" style="overflow-x: auto;"></div>
-    </div>
+      <div class="dash-section">
+        <div class="dash-section-title">
+          <span class="label">📰 Market Events</span>
+          <span class="sub">— check exposure, then aim your shock</span>
+          <span class="rule"></span>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>📊 Team Stock Holdings</h3>
+            <p class="muted">See what stocks each team holds so you can target surprises strategically.</p>
+            <div id="teamHoldingsBox" style="overflow-x:auto;"></div>
+          </div>
 
-    <!-- CALENDAR EDITOR -->
-    <div class="card">
-      <h3>📅 Edit Seasonal Calendar</h3>
-      <p class="muted">Editable only while game status is "lobby". Add/remove blocks and moves freely, then click Save.</p>
-      <div id="calendarEditor"></div>
-      <button class="btn-secondary" onclick="addBlock()">+ Add Season Block</button>
-      <button class="btn-primary" onclick="saveCalendar()">💾 Save Calendar</button>
-      <p id="calendarMsg"></p>
-    </div>
+          <div class="card">
+            <h3>🚨 Trigger Surprise Event</h3>
+            <p class="muted">Shock the market in a single click and keep the room buzzing.</p>
+            <select id="surpriseCompany"></select>
+            <input type="text" id="surpriseHeadline" placeholder="Headline e.g. WiFi down in Block C">
+            <input type="number" id="surprisePct" placeholder="% change e.g. -20 or 15" min="-30" max="30">
+            <button class="btn-primary" onclick="triggerSurprise()">Fire Event</button>
+          </div>
+        </div>
+      </div>
 
-    <!-- COMPANIES EDITOR -->
-    <div class="card">
-      <h3>🏢 Edit Companies</h3>
-      <p class="muted">Editable only while game status is "lobby".</p>
-      <div id="companiesEditor"></div>
-      <button class="btn-secondary" onclick="addCompany()">+ Add Company</button>
-      <button class="btn-primary" onclick="saveCompanies()">💾 Save Companies</button>
-      <p id="companiesMsg"></p>
-    </div>
+      <div class="dash-section">
+        <div class="dash-section-title">
+          <span class="label">🏆 Standings</span>
+          <span class="rule"></span>
+        </div>
+        <div class="card">
+          <h3>Live Leaderboard</h3>
+          <div id="adminLeaderboard"></div>
+        </div>
+      </div>
 
-    <!-- AWARDS -->
-    <div class="card">
-      <h3>🥇 Awards (live preview, final once game ends)</h3>
-      <button class="btn-secondary" onclick="loadAwards()">Refresh Awards</button>
-      <div id="awardsBox" style="margin-top:10px"></div>
+      <div class="dash-section">
+        <div class="dash-section-title">
+          <span class="label">⚙️ Game Setup</span>
+          <span class="sub">— editable only while status is "lobby"</span>
+          <span class="rule"></span>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>📅 Edit Seasonal Calendar</h3>
+            <p class="muted">Add/remove blocks and moves freely, then click Save.</p>
+            <div id="calendarEditor"></div>
+            <div class="action-pills">
+              <button class="btn-secondary" onclick="addBlock()">+ Add Season Block</button>
+              <button class="btn-primary" onclick="saveCalendar()">💾 Save Calendar</button>
+            </div>
+            <p id="calendarMsg"></p>
+          </div>
+
+          <div class="card">
+            <h3>🏢 Edit Companies</h3>
+            <p class="muted">Add, remove, or rename the tradable companies.</p>
+            <div id="companiesEditor"></div>
+            <div class="action-pills">
+              <button class="btn-secondary" onclick="addCompany()">+ Add Company</button>
+              <button class="btn-primary" onclick="saveCompanies()">💾 Save Companies</button>
+            </div>
+            <p id="companiesMsg"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-section">
+        <div class="dash-section-title">
+          <span class="label">📄 Reports &amp; Awards</span>
+          <span class="rule"></span>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Export Data</h3>
+            <p class="muted">Teams are created by students through signup. Use these exports for offline review.</p>
+            <div class="action-pills" style="margin-top:8px">
+              <a href="/api/admin/export/teams.csv" target="_blank"><button class="btn-secondary">⬇️ Export Teams CSV</button></a>
+              <a href="/api/admin/export/results.csv" target="_blank"><button class="btn-secondary">⬇️ Export Results CSV</button></a>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>🥇 Awards</h3>
+            <p class="muted">Live preview — final once game ends.</p>
+            <button class="btn-secondary" onclick="loadAwards()">Refresh Awards</button>
+            <div id="awardsBox" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
 </div>
+<script src="js/utils.js"></script>
 <script src="js/admin.js"></script>
 </body>
 </html>

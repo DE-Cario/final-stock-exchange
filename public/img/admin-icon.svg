@@ -1,0 +1,25 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gear -->
+  <circle cx="100" cy="100" r="35" fill="none" stroke="#FF6B6B" stroke-width="3"/>
+  
+  <!-- Gear teeth -->
+  <rect x="130" y="95" width="20" height="10" rx="2" fill="#FF6B6B"/>
+  <rect x="50" y="95" width="20" height="10" rx="2" fill="#FF6B6B"/>
+  <rect x="95" y="130" width="10" height="20" rx="2" fill="#FF6B6B"/>
+  <rect x="95" y="50" width="10" height="20" rx="2" fill="#FF6B6B"/>
+  
+  <!-- Rotated gear teeth -->
+  <g transform="translate(100, 100) rotate(45)">
+    <rect x="130" y="-5" width="20" height="10" rx="2" fill="#FF6B6B"/>
+    <rect x="50" y="-5" width="20" height="10" rx="2" fill="#FF6B6B"/>
+    <rect x="-5" y="130" width="10" height="20" rx="2" fill="#FF6B6B"/>
+    <rect x="-5" y="50" width="10" height="20" rx="2" fill="#FF6B6B"/>
+  </g>
+  
+  <!-- Center circle -->
+  <circle cx="100" cy="100" r="15" fill="#FF6B6B"/>
+  <circle cx="100" cy="100" r="8" fill="white"/>
+  
+  <!-- Checkmark symbol -->
+  <polyline points="90,100 97,107 110,94" fill="none" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

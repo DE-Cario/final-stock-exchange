@@ -47,36 +47,36 @@
       "id": "xerox",
       "name": "Xerox & Stationery Co.",
       "icon": "🖨️",
-      "startPrice": 110,
-      "price": 110
+      "startPrice": 100,
+      "price": 100
     },
     "placement": {
       "id": "placement",
       "name": "Placement Cell Ventures",
       "icon": "💼",
-      "startPrice": 125,
-      "price": 125
+      "startPrice": 100,
+      "price": 100
     },
     "fest": {
       "id": "fest",
       "name": "Fest & Events Co.",
       "icon": "🎉",
-      "startPrice": 125,
-      "price": 125
+      "startPrice": 100,
+      "price": 100
     },
     "attendance": {
       "id": "attendance",
       "name": "Attendance Watch Holdings",
       "icon": "📋",
-      "startPrice": 85,
-      "price": 85
+      "startPrice": 100,
+      "price": 100
     },
     "av": {
       "id": "av",
       "name": "AV & Projector Services",
       "icon": "📽️",
-      "startPrice": 115,
-      "price": 115
+      "startPrice": 100,
+      "price": 100
     }
   },
   "calendar": [

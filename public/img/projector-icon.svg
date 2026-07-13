@@ -1,0 +1,19 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Projector body -->
+  <rect x="20" y="40" width="160" height="80" rx="12" fill="none" stroke="#00D9FF" stroke-width="3"/>
+  
+  <!-- Projector lens -->
+  <circle cx="100" cy="80" r="25" fill="none" stroke="#00D9FF" stroke-width="3"/>
+  <circle cx="100" cy="80" r="15" fill="none" stroke="#00D9FF" stroke-width="2"/>
+  
+  <!-- Light rays -->
+  <line x1="130" y1="65" x2="160" y2="35" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+  <line x1="130" y1="95" x2="160" y2="125" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+  <line x1="70" y1="65" x2="40" y2="35" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+  <line x1="70" y1="95" x2="40" y2="125" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Control buttons -->
+  <circle cx="50" cy="150" r="6" fill="#00D9FF"/>
+  <circle cx="100" cy="150" r="6" fill="#00D9FF"/>
+  <circle cx="150" cy="150" r="6" fill="#00D9FF"/>
+</svg>

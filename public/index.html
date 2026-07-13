@@ -41,6 +41,41 @@
 
   <div class="login-box" style="max-width:none; margin:0;">
     <div class="hero">
+      <svg class="hero-chart" viewBox="0 0 300 170" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="3.2" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <linearGradient id="upGrad" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="#37d99b" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#9fd8dd"/>
+          </linearGradient>
+          <linearGradient id="downGrad" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stop-color="#ff5d73" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#f2b545"/>
+          </linearGradient>
+        </defs>
+        <g filter="url(#glow)">
+          <line x1="0" y1="150" x2="10" y2="150" stroke="#9fd8dd" stroke-width="1.5" class="candle"/>
+          <rect x="14" y="120" width="10" height="30" fill="url(#upGrad)" class="candle"/>
+          <rect x="34" y="95" width="10" height="55" fill="url(#upGrad)" class="candle"/>
+          <rect x="54" y="108" width="10" height="20" fill="url(#downGrad)" class="candle"/>
+          <rect x="74" y="70" width="10" height="60" fill="url(#upGrad)" class="candle"/>
+          <rect x="94" y="80" width="10" height="15" fill="url(#downGrad)" class="candle"/>
+          <rect x="114" y="45" width="10" height="55" fill="url(#upGrad)" class="candle"/>
+          <rect x="134" y="55" width="10" height="18" fill="url(#downGrad)" class="candle"/>
+          <rect x="154" y="20" width="10" height="55" fill="url(#upGrad)" class="candle"/>
+          <rect x="174" y="35" width="10" height="15" fill="url(#downGrad)" class="candle"/>
+          <rect x="194" y="0" width="10" height="55" fill="url(#upGrad)" class="candle"/>
+          <path d="M9 145 L39 100 L59 118 L79 75 L99 90 L119 50 L139 65 L159 25 L179 45 L199 10"
+                fill="none" stroke="#ffd579" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>
+          <circle cx="199" cy="10" r="3.5" fill="#ffd579" class="trend-dot"/>
+        </g>
+      </svg>
       <div class="logo-large">
         <img src="img/logo.png" alt="E-Cell Logo" style="width:100%; height:100%; object-fit:contain; border-radius:20px;">
       </div>
@@ -54,22 +89,21 @@
       </div>
     </div>
 
+    <div class="dash-section-title" style="margin-top:6px;">
+      <span class="label">🎯 Choose Your View</span>
+      <span class="rule"></span>
+    </div>
     <div class="grid-2">
       <div class="card">
         <h3>👥 Investor Team</h3>
-        <p class="muted">For teams trading on their phones.</p>
+        <p class="muted">For teams trading on their phones with live portfolio updates.</p>
         <a href="investor.html"><button class="btn-primary">Open Investor View</button></a>
       </div>
       <div class="card">
         <h3>🖥️ Projector / Big Screen</h3>
-        <p class="muted">Open this on the laptop connected to the projector.</p>
+        <p class="muted">Open this on the laptop connected to the projector for the live market view.</p>
         <a href="projector.html"><button class="btn-secondary">Open Projector View</button></a>
       </div>
-    </div>
-    <div class="card">
-      <h3>🛠️ Admin Dashboard</h3>
-      <p class="muted">For the organizer running the event.</p>
-      <a href="admin.html"><button class="btn-secondary">Open Admin Dashboard</button></a>
     </div>
 
     <div class="site-footer">Powered by <b>E-CELL</b> &middot; Campus Stock Exchange</div>

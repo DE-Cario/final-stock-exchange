@@ -27,6 +27,19 @@ function authHeaders() {
   return { 'Content-Type': 'application/json', 'x-admin-password': adminPassword };
 }
 
+function adminLogout() {
+  if (pollHandle) {
+    clearInterval(pollHandle);
+    pollHandle = null;
+  }
+  adminPassword = null;
+  sessionStorage.removeItem('cse_admin_pw');
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('adminPassword').value = '';
+  document.getElementById('loginError').textContent = '';
+}
+
 function enterDashboard() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
