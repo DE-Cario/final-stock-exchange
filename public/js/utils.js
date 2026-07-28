@@ -27,6 +27,13 @@ const ErrorLogger = {
 };
 
 // ============ FETCH WITH TIMEOUT ============
+function normalizeQtyValue(value, fallback = 1) {
+  if (value === '' || value === null || value === undefined) return '';
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.floor(parsed);
+}
+
 async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -48,6 +55,27 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
     }
     throw err;
   }
+}
+
+function renderTickerFromState(state, container) {
+  if (!container) return;
+  const companies = Array.isArray(state?.companies) ? state.companies : [];
+  if (!companies.length) {
+    container.innerHTML = '<span class="pct-flat">— 0.0%</span>';
+    return;
+  }
+
+  const tickerItems = companies.map((company) => {
+    const rawChange = Number(company.pctChangeThisBlock ?? company.pctChange ?? 0);
+    const roundedChange = Math.round(rawChange * 10) / 10;
+    const isUp = roundedChange > 0;
+    const isDown = roundedChange < 0;
+    const arrow = isUp ? '▲' : (isDown ? '▼' : '—');
+    const cssClass = isUp ? 'tk-up' : (isDown ? 'tk-down' : 'pct-flat');
+    return `<span>${company.name} <span class="${cssClass}">${arrow} ${Math.abs(roundedChange).toFixed(1)}%</span></span>`;
+  });
+  const repeatedItems = [...tickerItems, ...tickerItems];
+  container.innerHTML = repeatedItems.join('');
 }
 
 // ============ SOCKET.IO ENHANCED ============
@@ -243,8 +271,24 @@ class Paginator {
 }
 
 // Expose globally
-window.ErrorLogger = ErrorLogger;
-window.fetchWithTimeout = fetchWithTimeout;
-window.SocketManager = SocketManager;
-window.LoadingIndicator = LoadingIndicator;
-window.Paginator = Paginator;
+if (typeof window !== 'undefined') {
+  window.ErrorLogger = ErrorLogger;
+  window.fetchWithTimeout = fetchWithTimeout;
+  window.renderTickerFromState = renderTickerFromState;
+  window.normalizeQtyValue = normalizeQtyValue;
+  window.SocketManager = SocketManager;
+  window.LoadingIndicator = LoadingIndicator;
+  window.Paginator = Paginator;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    ErrorLogger,
+    fetchWithTimeout,
+    renderTickerFromState,
+    normalizeQtyValue,
+    SocketManager,
+    LoadingIndicator,
+    Paginator
+  };
+}

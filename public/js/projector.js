@@ -15,15 +15,22 @@ function renderState(state) {
     const totalSec = Math.ceil(state.timeRemainingMs / 1000);
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
-    timerEl.textContent = `${m}:${String(s).padStart(2, '0')}`;
+    const formatted = `${m}:${String(s).padStart(2, '0')}`;
+    timerEl.textContent = state.status === 'paused' ? `⏸️ ${formatted} (Paused)` : formatted;
   } else if (state.status === 'ended') {
     timerEl.textContent = 'ENDED';
   } else {
     timerEl.textContent = state.status === 'lobby' ? 'Not started' : '--:--';
   }
 
+  renderTickerFromState(state, document.querySelector('.ticker-track'));
+
   const list = document.getElementById('companyList');
   list.innerHTML = '';
+  if (!state.companies || !Array.isArray(state.companies)) {
+    list.innerHTML = '<div class="muted">Waiting for market data...</div>';
+    return;
+  }
   state.companies.forEach((c) => {
     const pctClass = c.pctChangeThisBlock > 0 ? 'pct-up' : (c.pctChangeThisBlock < 0 ? 'pct-down' : 'pct-flat');
     const arrow = c.pctChangeThisBlock > 0 ? '▲' : (c.pctChangeThisBlock < 0 ? '▼' : '—');

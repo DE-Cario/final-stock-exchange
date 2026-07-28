@@ -14,10 +14,9 @@
   <div id="loginScreen" class="login-box">
     <h1 class="title-fun">🛠️ Admin Login</h1>
     <div class="card">
-      <input type="password" id="adminPassword" placeholder="Admin password">
+      <input type="password" id="adminPassword" placeholder="Admin password" value="" autocomplete="new-password" spellcheck="false">
       <button class="btn-primary" style="width:100%" onclick="adminLogin()">Login</button>
       <p id="loginError" style="color:var(--red)"></p>
-      <p class="muted">Default password is <code>campus123</code> unless changed via ADMIN_PASSWORD env var.</p>
     </div>
   </div>
 
@@ -31,25 +30,14 @@
         </div>
       </div>
       <div style="display:flex; gap:12px; align-items:center;">
-        <div class="timer" id="statusBadge">lobby</div>
+        <div class="timer" id="timer">--:--</div>
+        <div class="pill" id="statusBadge">lobby</div>
         <button class="btn-secondary" onclick="adminLogout()">↩ Logout</button>
       </div>
     </div>
 
     <div class="ticker-tape" aria-hidden="true">
-      <div class="ticker-track">
-        <span>NIFTY100 <span class="tk-up">▲ 2.4%</span></span>
-        <span>CANTEEN.CO <span class="tk-up">▲ 5.1%</span></span>
-        <span>WIFI.INC <span class="tk-down">▼ 1.8%</span></span>
-        <span>HOSTEL.LTD <span class="pct-flat">— 0.0%</span></span>
-        <span>FEST.EXCH <span class="tk-up">▲ 8.6%</span></span>
-        <span>LIBRARY.CO <span class="tk-down">▼ 3.2%</span></span>
-        <span>ECELL.IPO <span class="tk-up">▲ 12.0%</span></span>
-        <span>NIFTY100 <span class="tk-up">▲ 2.4%</span></span>
-        <span>CANTEEN.CO <span class="tk-up">▲ 5.1%</span></span>
-        <span>WIFI.INC <span class="tk-down">▼ 1.8%</span></span>
-        <span>HOSTEL.LTD <span class="pct-flat">— 0.0%</span></span>
-      </div>
+      <div class="ticker-track"></div>
     </div>
 
     <div class="dashboard-shell">
@@ -65,7 +53,10 @@
               <p class="eyebrow">Organizer controls</p>
               <h3>Game Controls</h3>
             </div>
-            <div class="pill" id="statusBadge">lobby</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <div class="timer" id="heroTimer">--:--</div>
+              <div class="pill" id="statusBadgeHero">lobby</div>
+            </div>
           </div>
           <div class="season-banner" id="seasonBanner">Not started</div>
           <div class="action-pills">
@@ -147,6 +138,26 @@
 
       <div class="dash-section">
         <div class="dash-section-title">
+          <span class="label">🧾 Admin Holdings</span>
+          <span class="sub">— manage shares held by the administrator</span>
+          <span class="rule"></span>
+        </div>
+        <div class="card">
+            <h3>🧾 Admin's Holdings</h3>
+            <p class="muted">The admin receives 50% of all shares automatically. Admin cash is treated as unlimited, so buy and sell anytime.</p>
+            <div class="flex" style="gap:8px; margin-bottom:8px; align-items:center; flex-wrap:wrap;">
+              <select id="adminHoldingsCompany" style="min-width:180px"></select>
+              <input type="number" id="adminHoldingsQty" value="100" min="1" style="width:90px">
+              <button class="btn-secondary" onclick="tradeAdminHolding('buy')">Buy</button>
+              <button class="btn-secondary" onclick="tradeAdminHolding('sell')">Sell</button>
+            </div>
+            <div id="adminHoldingsBox"></div>
+            <p id="adminHoldingsMsg"></p>
+        </div>
+      </div>
+
+      <div class="dash-section">
+        <div class="dash-section-title">
           <span class="label">📄 Reports &amp; Awards</span>
           <span class="rule"></span>
         </div>
@@ -173,6 +184,7 @@
 
   </div>
 </div>
+<script src="/socket.io/socket.io.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/admin.js"></script>
 </body>

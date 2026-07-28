@@ -7,7 +7,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+const DEFAULT_DATA_DIR = process.env.WEBSITE_INSTANCE_ID ? '/home/data' : path.join(__dirname, '..', 'data');
+const DATA_DIR = process.env.DATA_DIR || DEFAULT_DATA_DIR;
 const STATE_FILE = path.join(DATA_DIR, 'gamestate.json');
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

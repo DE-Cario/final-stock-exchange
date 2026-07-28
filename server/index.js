@@ -5,12 +5,15 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const { GameEngine } = require('./gameEngine');
+const { getHost, getPort } = require('./config');
 
-const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'campus123';
+const PORT = getPort();
+const HOST = getHost();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ECELL26';
 
 const app = express();
 app.use(cors());
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -154,11 +157,60 @@ app.get('/api/admin/overview', requireAdmin, (req, res) => {
       publicState: engine.getPublicState(),
       teams: Object.values(engine.state.teams).map((t) => engine.getTeamPortfolio(t.teamId)),
       calendar: engine.state.calendar,
-      companies: Object.values(engine.state.companies)
+      companies: Object.values(engine.state.companies),
+      adminHoldings: engine.getAdminPortfolio()
     });
   } catch (err) {
     console.error('[API ERROR] /api/admin/overview:', err);
     res.status(500).json({ ok: false, error: 'Overview fetch failed' });
+  }
+});
+
+app.get('/api/admin/setup2', requireAdmin, (req, res) => {
+  try {
+    res.json({
+      ok: true,
+      config: engine.state.setup2Config || { calendar: [], companies: [] }
+    });
+  } catch (err) {
+    console.error('[API ERROR] /api/admin/setup2:', err);
+    res.status(500).json({ ok: false, error: 'Setup-2 fetch failed' });
+  }
+});
+
+app.post('/api/admin/setup2', requireAdmin, (req, res) => {
+  try {
+    const result = engine.setSetup2Config(req.body.config);
+    if (!result.ok) return res.status(400).json(result);
+    res.json(result);
+  } catch (err) {
+    console.error('[API ERROR] /api/admin/setup2 POST:', err);
+    res.status(500).json({ ok: false, error: 'Setup-2 save failed' });
+  }
+});
+
+app.post('/api/admin/setup2/launch', requireAdmin, (req, res) => {
+  try {
+    const result = engine.startSetup2Game();
+    io.emit('state_update', engine.getPublicState());
+    res.json(result);
+  } catch (err) {
+    console.error('[API ERROR] /api/admin/setup2/launch:', err);
+    res.status(500).json({ ok: false, error: 'Setup-2 launch failed' });
+  }
+});
+
+app.post('/api/admin/setup2/admin-holdings', requireAdmin, (req, res) => {
+  try {
+    const { companyId, action, qty } = req.body;
+    if (!companyId || !action) {
+      return res.status(400).json({ ok: false, error: 'companyId and action required' });
+    }
+    const result = engine.tradeAdmin(companyId, action, qty);
+    res.json(result);
+  } catch (err) {
+    console.error('[API ERROR] /api/admin/setup2/admin-holdings:', err);
+    res.status(500).json({ ok: false, error: 'Admin holdings update failed' });
   }
 });
 
@@ -174,6 +226,20 @@ app.put('/api/admin/teams/:teamId', requireAdmin, (req, res) => {
   } catch (err) {
     console.error('[API ERROR] /api/admin/teams/:teamId PUT:', err);
     res.status(500).json({ ok: false, error: 'Team update failed' });
+  }
+});
+
+app.post('/api/admin/teams/:teamId/capital', requireAdmin, (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { capital } = req.body;
+    const result = engine.updateTeamCapital(teamId, capital);
+    if (!result.ok) return res.status(400).json(result);
+    console.log('[ADMIN]', new Date().toLocaleTimeString(), 'Team capital updated:', teamId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[API ERROR] /api/admin/teams/:teamId/capital POST:', err);
+    res.status(500).json({ ok: false, error: 'Team capital update failed' });
   }
 });
 
@@ -369,15 +435,16 @@ io.on('connection', (socket) => {
 });
 
 // ============ SERVER START ============
-server.listen(PORT, () => {
-  console.log(`\n🚀 Campus Stock Exchange server running on http://localhost:${PORT}`);
-  console.log(`📝 Admin password: ${ADMIN_PASSWORD} (set ADMIN_PASSWORD env var to change)`);
+server.listen(PORT, HOST, () => {
+  console.log(`\n🚀 Campus Stock Exchange server running on http://${HOST}:${PORT}`);
+  console.log('📝 Admin password configured');
   console.log(`⚙️  Process ID: ${process.pid}\n`);
 });
 
 // ============ GRACEFUL SHUTDOWN ============
 process.on('SIGTERM', () => {
   console.log('\n[SHUTDOWN] SIGTERM received, gracefully shutting down...');
+  engine.persistSync();
   server.close(() => {
     console.log('[SHUTDOWN] Server closed');
     process.exit(0);
@@ -386,6 +453,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   console.log('\n[SHUTDOWN] SIGINT received, gracefully shutting down...');
+  engine.persistSync();
   server.close(() => {
     console.log('[SHUTDOWN] Server closed');
     process.exit(0);

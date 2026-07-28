@@ -1,6 +1,9 @@
 // public/js/admin.js
-let adminPassword = sessionStorage.getItem('cse_admin_pw') || null;
+let adminPassword = null;
 let pollHandle = null;
+let isEditingCapital = false;
+// Remove passwords stored by older versions of the dashboard.
+sessionStorage.removeItem('cse_admin_pw');
 
 async function adminLogin() {
   const pw = document.getElementById('adminPassword').value;
@@ -12,11 +15,12 @@ async function adminLogin() {
     });
     const data = await res.json();
     if (!data.ok) {
+      document.getElementById('adminPassword').value = '';
       document.getElementById('loginError').textContent = data.error;
       return;
     }
     adminPassword = pw;
-    sessionStorage.setItem('cse_admin_pw', pw);
+    document.getElementById('adminPassword').value = '';
     enterDashboard();
   } catch (err) {
     document.getElementById('loginError').textContent = 'Could not reach server.';
@@ -33,12 +37,40 @@ function adminLogout() {
     pollHandle = null;
   }
   adminPassword = null;
-  sessionStorage.removeItem('cse_admin_pw');
-  document.getElementById('loginScreen').style.display = 'block';
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('adminPassword').value = '';
-  document.getElementById('loginError').textContent = '';
+  window.location.assign('/');
 }
+
+let adminSocketManager = typeof SocketManager !== 'undefined' ? new SocketManager() : null;
+let adminStateCache = null;
+
+function updateAdminTimerDisplay(publicState, statusStr) {
+  if (publicState) {
+    adminStateCache = { ...publicState, status: statusStr || publicState.status };
+  }
+  const timerEls = [document.getElementById('timer'), document.getElementById('heroTimer')].filter(Boolean);
+  if (!timerEls.length) return;
+
+  let timeText = '--:--';
+  if (adminStateCache && adminStateCache.timeRemainingMs != null) {
+    const totalSec = Math.ceil(adminStateCache.timeRemainingMs / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    const formatted = `${m}:${String(s).padStart(2, '0')}`;
+    timeText = adminStateCache.status === 'paused' ? `⏸️ ${formatted} (Paused)` : formatted;
+  } else if (statusStr === 'ended' || (adminStateCache && adminStateCache.status === 'ended')) {
+    timeText = 'ENDED';
+  } else if (statusStr === 'lobby' || (adminStateCache && adminStateCache.status === 'lobby')) {
+    timeText = 'Not started';
+  }
+  timerEls.forEach((el) => { el.textContent = timeText; });
+}
+
+setInterval(() => {
+  if (adminStateCache && adminStateCache.status === 'running' && adminStateCache.timeRemainingMs > 0) {
+    adminStateCache.timeRemainingMs = Math.max(0, adminStateCache.timeRemainingMs - 1000);
+    updateAdminTimerDisplay();
+  }
+}, 1000);
 
 function enterDashboard() {
   document.getElementById('loginScreen').style.display = 'none';
@@ -47,6 +79,12 @@ function enterDashboard() {
   loadCalendar();
   loadCompanies();
   pollHandle = setInterval(refreshOverview, 4000);
+  
+  if (adminSocketManager) {
+    adminSocketManager.on('state_update', () => refreshOverview());
+    adminSocketManager.on('leaderboard_update', () => refreshOverview());
+    adminSocketManager.connect();
+  }
 }
 
 async function callAdmin(url, method) {
@@ -77,13 +115,21 @@ async function resetGame() {
 }
 
 async function refreshOverview() {
+  if (isEditingCapital) return;
   try {
     const res = await fetch('/api/admin/overview', { headers: authHeaders() });
     const data = await res.json();
     if (!data.ok) return;
-    document.getElementById('statusBadge').textContent = data.status;
+    const statusStr = data.status || 'lobby';
+    document.querySelectorAll('#statusBadge, #statusBadgeHero').forEach(el => {
+      el.textContent = statusStr;
+    });
+
+    updateAdminTimerDisplay(data.publicState, statusStr);
+
     document.getElementById('seasonBanner').textContent =
       `📅 ${data.publicState.blockLabel} (Block ${data.publicState.blockIndex + 1}/${data.publicState.totalBlocks})`;
+    renderTickerFromState(data.publicState, document.querySelector('.ticker-track'));
 
     // populate surprise event company dropdown
     const select = document.getElementById('surpriseCompany');
@@ -100,7 +146,66 @@ async function refreshOverview() {
 
     // team holdings display
     renderTeamHoldings(data.teams, data.companies);
+    renderAdminHoldingsPanel(data.adminHoldings || null, data.companies, data.teams);
   } catch (err) { /* ignore transient errors */ }
+}
+
+function renderAdminHoldingsPanel(adminPortfolio, companies, teams) {
+  const box = document.getElementById('adminHoldingsBox');
+  const select = document.getElementById('adminHoldingsCompany');
+  if (!box || !select) return;
+
+  const portfolio = adminPortfolio || { cash: Infinity, holdings: [] };
+  const currentValue = portfolio.holdings.reduce((sum, h) => sum + h.value, 0);
+  const selectedCompanyId = select.value;
+
+  const companyMap = companies?.reduce((map, company) => {
+    map[company.id] = { ...company, adminHeld: 0, teamHeld: 0 };
+    return map;
+  }, {}) || {};
+
+  portfolio.holdings.forEach((h) => {
+    if (companyMap[h.companyId]) {
+      companyMap[h.companyId].adminHeld = Number(h.boughtQty || 0);
+    }
+  });
+
+  teams?.forEach((team) => {
+    team.holdings?.forEach((holding) => {
+      if (!companyMap[holding.companyId]) return;
+      companyMap[holding.companyId].teamHeld += Number(holding.boughtQty || 0);
+    });
+  });
+
+  const companyRows = Object.values(companyMap).map((company) => {
+    const totalShares = Number(company.totalShares || 10000);
+    const available = Math.max(0, totalShares - company.adminHeld - company.teamHeld);
+    return `
+      <div style="border:1px solid #2c2a3f; border-radius:8px; padding:10px; background:#121425; display:grid; gap:4px;">
+        <div><b>${company.icon} ${company.name}</b></div>
+        <div>Total shares: ${totalShares.toLocaleString()}</div>
+        <div>Admin held: ${company.adminHeld.toLocaleString()}</div>
+        <div>Team held: ${company.teamHeld.toLocaleString()}</div>
+        <div>Available for purchase: ${available.toLocaleString()}</div>
+      </div>
+    `;
+  }).join('');
+
+  select.innerHTML = companies?.map((c) => `<option value="${c.id}">${c.icon} ${c.name}</option>`).join('') || '';
+  if (selectedCompanyId && Array.from(select.options).some((option) => option.value === selectedCompanyId)) {
+    select.value = selectedCompanyId;
+  } else if (select.options.length > 0) {
+    select.value = select.options[0].value;
+  }
+
+  box.innerHTML = `
+    <div class="muted">Cash: ₹${Number.isFinite(portfolio.cash) ? portfolio.cash.toLocaleString() : '∞'}</div>
+    <div style="margin-top:8px; display:flex; flex-direction:column; gap:6px;">
+      ${portfolio.holdings.length ? portfolio.holdings.map((h) => `<div style="border:1px solid #2c2a3f; border-radius:8px; padding:8px; background:#121425;"><b>${h.icon} ${h.name}</b><br/>Shares: ${h.boughtQty} · Value: ₹${h.value.toLocaleString()}</div>`).join('') : '<div class="muted">No admin holdings yet.</div>'}
+    </div>
+    <div class="muted" style="margin-top:8px;">Total holdings value: ₹${currentValue.toLocaleString()}</div>
+    <div style="margin-top:12px; display:grid; gap:8px;">${companyRows}</div>
+  `;
 }
 
 function renderTeamHoldings(teams, companies) {
@@ -120,7 +225,9 @@ function renderTeamHoldings(teams, companies) {
         <th style="border:1px solid #3c3a4f; padding:8px; text-align:left;">Team</th>
         <th style="border:1px solid #3c3a4f; padding:8px; text-align:right;">Cash</th>
         <th style="border:1px solid #3c3a4f; padding:8px; text-align:left;">Holdings</th>
-        <th style="border:1px solid #3c3a4f; padding:8px; text-align:right;">Holdings Value</th>        <th style="border:1px solid #3c3a4f; padding:8px; text-align:center;">Action</th>      </tr>
+        <th style="border:1px solid #3c3a4f; padding:8px; text-align:right;">Holdings Value</th>
+        <th style="border:1px solid #3c3a4f; padding:8px; text-align:center;">Action</th>
+      </tr>
     </thead>
     <tbody>`;
 
@@ -135,16 +242,45 @@ function renderTeamHoldings(teams, companies) {
     
     html += `<tr style="border-bottom:1px solid #3c3a4f;">
       <td style="border:1px solid #3c3a4f; padding:8px; font-weight:500;">${team.teamName}</td>
-      <td style="border:1px solid #3c3a4f; padding:8px; text-align:right;">₹${team.cash.toLocaleString()}</td>
+      <td style="border:1px solid #3c3a4f; padding:8px; text-align:right;" id="cash-${team.teamId}">
+        ₹${team.cash.toLocaleString()}
+      </td>
       <td style="border:1px solid #3c3a4f; padding:8px;">${holdingsText}</td>
       <td style="border:1px solid #3c3a4f; padding:8px; text-align:right;">₹${team.holdingsValue.toLocaleString()}</td>
-      <td style="border:1px solid #3c3a4f; padding:8px; text-align:center;"><button class="btn-danger" onclick="kickTeam('${team.teamId}')">Kick</button></td>
+      <td style="border:1px solid #3c3a4f; padding:8px; text-align:center;" id="action-${team.teamId}">
+        <button class="btn-secondary" onclick="editCapital('${team.teamId}', ${team.cash})">Edit</button>
+        <button class="btn-danger" onclick="kickTeam('${team.teamId}')">Kick</button>
+      </td>
     </tr>`;
   });
 
   html += '</tbody></table>';
   box.innerHTML = html;
 
+}
+
+function editCapital(teamId, currentCapital) {
+  isEditingCapital = true;
+  const cashCell = document.getElementById(`cash-${teamId}`);
+  const actionCell = document.getElementById(`action-${teamId}`);
+
+  cashCell.innerHTML = `<input type="number" id="capital-input-${teamId}" value="${currentCapital}" style="width: 100px; text-align: right;">`;
+  actionCell.innerHTML = `
+    <button class="btn-primary" onclick="saveCapital('${teamId}')">Save</button>
+    <button class="btn-secondary" onclick="cancelCapitalEdit()">Cancel</button>
+  `;
+}
+
+async function saveCapital(teamId) {
+  const newCapital = document.getElementById(`capital-input-${teamId}`).value;
+  await updateTeamCapital(teamId, newCapital);
+  isEditingCapital = false;
+  refreshOverview();
+}
+
+function cancelCapitalEdit() {
+  isEditingCapital = false;
+  refreshOverview();
 }
 
 // ---------- team setup ----------
@@ -162,6 +298,24 @@ async function kickTeam(teamId) {
     alert('Could not remove team.');
   }
 }
+
+async function updateTeamCapital(teamId, capital) {
+  try {
+    const res = await fetch(`/api/admin/teams/${encodeURIComponent(teamId)}/capital`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ capital: capital })
+    });
+    const data = await res.json();
+    if (!data.ok) { 
+      alert(data.error || 'Failed to update capital'); 
+      return; 
+    }
+  } catch (err) {
+    alert('Could not update capital.');
+  }
+}
+
 
 // ---------- surprise events ----------
 async function triggerSurprise() {
@@ -209,33 +363,33 @@ async function renderCalendarEditor() {
   container.innerHTML = '';
   calendarData.forEach((block, bIdx) => {
     const blockDiv = document.createElement('div');
-    blockDiv.style.border = '1px solid #2c2a3f';
-    blockDiv.style.borderRadius = '10px';
-    blockDiv.style.padding = '10px';
-    blockDiv.style.marginBottom = '10px';
+    blockDiv.className = 'season-block';
     blockDiv.innerHTML = `
-      <div class="flex">
-        <input type="text" value="${block.label}" placeholder="Block label" onchange="calendarData[${bIdx}].label=this.value">
-        <input type="number" value="${block.durationMinutes}" min="1" style="width:90px" onchange="calendarData[${bIdx}].durationMinutes=Number(this.value)">
-        <span class="muted">min</span>
-        <button class="btn-danger" onclick="removeBlock(${bIdx})">Remove Block</button>
+      <div class="season-block-header">
+        <label>Season name
+          <input type="text" value="${block.label}" placeholder="Block label" oninput="calendarData[${bIdx}].label=this.value">
+        </label>
+        <label>Duration (min)
+          <input type="number" value="${block.durationMinutes}" min="1" oninput="calendarData[${bIdx}].durationMinutes=Number(this.value)">
+        </label>
+        <button class="btn-danger season-remove" title="Remove season block" onclick="removeBlock(${bIdx})">Remove</button>
       </div>
-      <div id="moves-${bIdx}"></div>
-      <button class="btn-secondary" onclick="addMove(${bIdx})">+ Add Move</button>
+      <div class="calendar-moves-header"><span>Company affected</span><span>Change (%)</span><span></span></div>
+      <div class="calendar-moves" id="moves-${bIdx}"></div>
+      <button class="btn-secondary add-move" onclick="addMove(${bIdx})">+ Add price change</button>
     `;
     container.appendChild(blockDiv);
     const movesDiv = blockDiv.querySelector(`#moves-${bIdx}`);
     block.moves.forEach((move, mIdx) => {
       const moveRow = document.createElement('div');
-      moveRow.className = 'flex';
-      moveRow.style.marginTop = '6px';
+      moveRow.className = 'calendar-move-row';
       const options = companies.map((c) =>
         `<option value="${c.id}" ${c.id === move.companyId ? 'selected' : ''}>${c.icon} ${c.name}</option>`
       ).join('');
       moveRow.innerHTML = `
-        <select onchange="calendarData[${bIdx}].moves[${mIdx}].companyId=this.value">${options}</select>
-        <input type="number" value="${move.pct}" style="width:80px" onchange="calendarData[${bIdx}].moves[${mIdx}].pct=Number(this.value)"> %
-        <button class="btn-danger" onclick="removeMove(${bIdx},${mIdx})">x</button>
+        <select aria-label="Company affected" onchange="calendarData[${bIdx}].moves[${mIdx}].companyId=this.value">${options}</select>
+        <input type="number" aria-label="Percentage price change" value="${move.pct}" oninput="calendarData[${bIdx}].moves[${mIdx}].pct=Number(this.value)">
+        <button class="btn-danger remove-move" title="Remove price change" onclick="removeMove(${bIdx},${mIdx})">×</button>
       `;
       movesDiv.appendChild(moveRow);
     });
@@ -289,23 +443,27 @@ async function loadCompanies() {
 function renderCompaniesEditor() {
   const container = document.getElementById('companiesEditor');
   container.innerHTML = '';
+  const headings = document.createElement('div');
+  headings.className = 'company-editor-headings';
+  headings.innerHTML = '<span>Code</span><span>Icon</span><span>Company name</span><span>Start price (₹)</span><span>Total shares</span><span>Remove</span>';
+  container.appendChild(headings);
   companiesData.forEach((c, idx) => {
     const row = document.createElement('div');
-    row.className = 'flex';
-    row.style.marginBottom = '6px';
+    row.className = 'company-editor-row';
     row.innerHTML = `
-      <input type="text" value="${c.id}" style="width:100px" placeholder="id" onchange="companiesData[${idx}].id=this.value">
-      <input type="text" value="${c.icon}" style="width:50px" placeholder="icon" onchange="companiesData[${idx}].icon=this.value">
-      <input type="text" value="${c.name}" placeholder="Company name" onchange="companiesData[${idx}].name=this.value">
-      <input type="number" value="${c.price}" style="width:90px" placeholder="start price" onchange="companiesData[${idx}].price=Number(this.value)">
-      <button class="btn-danger" onclick="removeCompany(${idx})">x</button>
+      <input class="company-id-input" type="text" value="${c.id}" aria-label="Company code" placeholder="id" oninput="companiesData[${idx}].id=this.value">
+      <input class="company-icon-input" type="text" value="${c.icon}" aria-label="Company icon" placeholder="icon" oninput="companiesData[${idx}].icon=this.value">
+      <input class="company-name-input" type="text" value="${c.name}" aria-label="Company name" placeholder="Company name" oninput="companiesData[${idx}].name=this.value">
+      <input class="company-price-input" type="number" value="${c.price}" aria-label="Starting price in rupees" placeholder="start price" oninput="companiesData[${idx}].price=Number(this.value)">
+      <input class="company-shares-input" type="number" value="${c.totalShares || 10000}" aria-label="Total shares" placeholder="shares" oninput="companiesData[${idx}].totalShares=Number(this.value)">
+      <button class="btn-danger" title="Remove company" onclick="removeCompany(${idx})">×</button>
     `;
     container.appendChild(row);
   });
 }
 
 function addCompany() {
-  companiesData.push({ id: 'new_co_' + companiesData.length, icon: '🏢', name: 'New Company', price: 100 });
+  companiesData.push({ id: 'new_co_' + companiesData.length, icon: '🏢', name: 'New Company', price: 100, totalShares: 10000 });
   renderCompaniesEditor();
 }
 function removeCompany(idx) {
@@ -322,9 +480,34 @@ async function saveCompanies() {
     });
     const data = await res.json();
     document.getElementById('companiesMsg').textContent = data.ok ? '✅ Saved!' : ('❌ ' + data.error);
-    if (data.ok) renderCalendarEditor();
+    if (data.ok) {
+      // Reload the canonical server state so every editor shows the renamed company.
+      await Promise.all([loadCompanies(), renderCalendarEditor(), refreshOverview()]);
+    }
   } catch (err) {
     document.getElementById('companiesMsg').textContent = '❌ Could not save.';
+  }
+}
+
+async function tradeAdminHolding(action) {
+  const companyId = document.getElementById('adminHoldingsCompany').value;
+  const qty = document.getElementById('adminHoldingsQty').value;
+  if (!companyId) return;
+  try {
+    const res = await fetch('/api/admin/setup2/admin-holdings', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ companyId, action, qty: Number(qty) })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      refreshOverview();
+      document.getElementById('adminHoldingsMsg').textContent = `✅ Admin ${action === 'buy' ? 'bought' : 'sold'} shares.`;
+    } else {
+      document.getElementById('adminHoldingsMsg').textContent = '❌ ' + data.error;
+    }
+  } catch (err) {
+    document.getElementById('adminHoldingsMsg').textContent = '❌ Could not update admin holdings.';
   }
 }
 
@@ -344,12 +527,4 @@ async function loadAwards() {
   } catch (err) {
     alert('Could not load awards.');
   }
-}
-
-// auto-login if password already in session
-if (adminPassword) {
-  fetch('/api/admin/overview', { headers: authHeaders() })
-    .then((r) => r.json())
-    .then((data) => { if (data.ok) enterDashboard(); })
-    .catch(() => { /* fall back to login screen */ });
 }

@@ -4,6 +4,7 @@ let socketManager = new SocketManager();
 let latestState = null;
 let currentPortfolio = null;
 let loading = new LoadingIndicator();
+let companyQtyValues = {};
 
 function showToast(msg, type) {
   const toast = document.getElementById('toast');
@@ -173,31 +174,87 @@ function renderState(state) {
     const totalSec = Math.ceil(state.timeRemainingMs / 1000);
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
-    timerEl.textContent = `${m}:${String(s).padStart(2, '0')}`;
+    const formatted = `${m}:${String(s).padStart(2, '0')}`;
+    timerEl.textContent = state.status === 'paused' ? `⏸️ ${formatted} (Paused)` : formatted;
   } else if (state.status === 'ended') {
     timerEl.textContent = 'ENDED';
   } else {
     timerEl.textContent = state.status === 'lobby' ? 'Not started' : '--:--';
   }
 
+  renderTickerFromState(state, document.querySelector('.ticker-track'));
+
   const list = document.getElementById('companyList');
-  list.innerHTML = '';
+  list.querySelectorAll('.qty-input').forEach((input) => {
+    const companyId = input.id.replace(/^qty-/, '');
+    companyQtyValues[companyId] = input.value;
+  });
+
+  if (!state.companies || !Array.isArray(state.companies)) {
+    list.innerHTML = '<div class="muted">Waiting for market data...</div>';
+    return;
+  }
+
+  if (!list.querySelector('.company-row')) {
+    list.innerHTML = '';
+  }
+
   state.companies.forEach((c) => {
     const pctClass = c.pctChangeThisBlock > 0 ? 'pct-up' : (c.pctChangeThisBlock < 0 ? 'pct-down' : 'pct-flat');
     const arrow = c.pctChangeThisBlock > 0 ? '▲' : (c.pctChangeThisBlock < 0 ? '▼' : '—');
-    const row = document.createElement('div');
-    row.className = 'company-row';
-    row.innerHTML = `
-      <div class="company-name"><span class="company-icon">${c.icon}</span> ${c.name}</div>
-      <div><span class="price">₹${c.price}</span> <span class="${pctClass}">${arrow} ${Math.abs(c.pctChangeThisBlock)}%</span></div>
-      <div class="trade-controls">
-        <input type="number" min="1" value="1" class="qty-input" id="qty-${c.id}">
-        <button class="btn-buy" onclick="trade('${c.id}','buy')" ${state.status !== 'running' ? 'disabled' : ''}>Buy</button>
-        <button class="btn-sell" onclick="trade('${c.id}','sell')" ${state.status !== 'running' ? 'disabled' : ''}>Sell</button>
-        <button class="btn-secondary" onclick="trade('${c.id}','short')" ${state.status !== 'running' ? 'disabled' : ''}>Short</button>
-      </div>
-    `;
-    list.appendChild(row);
+    const savedQty = companyQtyValues[c.id] !== undefined ? companyQtyValues[c.id] : '1';
+    
+    let row = list.querySelector(`.company-row[data-company-id="${c.id}"]`);
+    if (!row) {
+      row = document.createElement('div');
+      row.className = 'company-row';
+      row.setAttribute('data-company-id', c.id);
+      row.innerHTML = `
+        <div class="company-name"><span class="company-icon">${c.icon}</span> ${c.name}</div>
+        <div><span class="price">₹${c.price}</span> <span class="${pctClass}">${arrow} ${Math.abs(c.pctChangeThisBlock)}%</span></div>
+        <div class="trade-controls">
+          <input type="number" min="1" value="${savedQty}" class="qty-input" id="qty-${c.id}">
+          <button class="btn-buy" onclick="trade('${c.id}','buy')" ${state.status !== 'running' ? 'disabled' : ''}>Buy</button>
+          <button class="btn-sell" onclick="trade('${c.id}','sell')" ${state.status !== 'running' ? 'disabled' : ''}>Sell</button>
+          <button class="btn-secondary" onclick="trade('${c.id}','short')" ${state.status !== 'running' ? 'disabled' : ''}>Short</button>
+          <button class="btn-secondary" onclick="trade('${c.id}','buy_to_cover')" ${state.status !== 'running' ? 'disabled' : ''}>Buy to Cover</button>
+        </div>
+      `;
+      const qtyInput = row.querySelector('.qty-input');
+      qtyInput.addEventListener('input', () => {
+        companyQtyValues[c.id] = qtyInput.value;
+      });
+      qtyInput.addEventListener('blur', () => {
+        if (!qtyInput.value || parseInt(qtyInput.value, 10) < 1) {
+          qtyInput.value = '1';
+          companyQtyValues[c.id] = '1';
+        }
+      });
+      list.appendChild(row);
+    } else {
+      const priceSpan = row.querySelector('.price');
+      if (priceSpan) priceSpan.textContent = `₹${c.price}`;
+      
+      const pctSpan = row.querySelector('.pct-up, .pct-down, .pct-flat');
+      if (pctSpan) {
+        pctSpan.className = pctClass;
+        pctSpan.textContent = `${arrow} ${Math.abs(c.pctChangeThisBlock)}%`;
+      }
+      
+      const buttons = row.querySelectorAll('button');
+      buttons.forEach(btn => {
+        if (state.status !== 'running') {
+          btn.setAttribute('disabled', 'disabled');
+        } else {
+          btn.removeAttribute('disabled');
+        }
+      });
+
+      const qtyInput = row.querySelector('.qty-input');
+      if (qtyInput && document.activeElement !== qtyInput) {
+        qtyInput.value = savedQty !== '' ? savedQty : '1';
+      }
+    }
   });
 
   const newsFeed = document.getElementById('newsFeed');
@@ -214,32 +271,46 @@ function renderState(state) {
 }
 
 function renderPortfolio(p) {
-  currentPortfolio = p;
-  document.getElementById('cashDisplay').textContent = `₹${p.cash.toLocaleString()}`;
-  document.getElementById('holdingsValueDisplay').textContent = `₹${p.holdingsValue.toLocaleString()}`;
-  document.getElementById('totalValueDisplay').textContent = `₹${p.totalValue.toLocaleString()}`;
-  document.getElementById('profileName').textContent = p.teamName;
-  document.getElementById('profileDetail').textContent = `Team size ${p.teamSize || p.memberCount || 1}`;
-  document.getElementById('teamProfilePill').textContent = `Members: ${p.teamSize || p.memberCount || 1}`;
-  document.getElementById('teamMetaName').textContent = p.teamName;
-  document.getElementById('teamMetaMembers').textContent = p.teamSize || p.memberCount || 1;
-  document.getElementById('teamMetaCash').textContent = `₹${p.cash.toLocaleString()}`;
+  currentPortfolio = p || { cash: 0, holdingsValue: 0, totalValue: 0, holdings: [] };
+  const safePortfolio = currentPortfolio;
+  document.getElementById('cashDisplay').textContent = `₹${(safePortfolio.cash || 0).toLocaleString()}`;
+  document.getElementById('holdingsValueDisplay').textContent = `₹${(safePortfolio.holdingsValue || 0).toLocaleString()}`;
+  document.getElementById('totalValueDisplay').textContent = `₹${(safePortfolio.totalValue || 0).toLocaleString()}`;
+  document.getElementById('profileName').textContent = safePortfolio.teamName || 'Your team';
+  document.getElementById('profileDetail').textContent = `Team size ${safePortfolio.teamSize || safePortfolio.memberCount || 1}`;
+  document.getElementById('teamProfilePill').textContent = `Members: ${safePortfolio.teamSize || safePortfolio.memberCount || 1}`;
+  document.getElementById('teamMetaName').textContent = safePortfolio.teamName || 'Your team';
+  document.getElementById('teamMetaMembers').textContent = safePortfolio.teamSize || safePortfolio.memberCount || 1;
+  document.getElementById('teamMetaCash').textContent = `₹${(safePortfolio.cash || 0).toLocaleString()}`;
 
   const holdingsList = document.getElementById('holdingsList');
-  if (!p.holdings.length) {
+  const holdings = Array.isArray(safePortfolio.holdings) ? safePortfolio.holdings : [];
+  const boughtHoldings = holdings.filter((h) => (h.boughtQty || 0) > 0);
+  const shortedHoldings = holdings.filter((h) => (h.shortedQty || 0) > 0);
+
+  if (!boughtHoldings.length && !shortedHoldings.length) {
     holdingsList.innerHTML = '<span class="muted">No holdings yet.</span>';
     return;
   }
-  holdingsList.innerHTML = '';
-  p.holdings.forEach((h) => {
-    const row = document.createElement('div');
-    row.className = 'flex-between';
-    row.style.marginBottom = '6px';
-    const qtyText = h.qty < 0 ? `x${Math.abs(h.qty)} (short)` : `x${h.qty}`;
-    row.innerHTML = `<span>${h.icon} ${h.name} ${qtyText}</span><span>₹${h.value.toLocaleString()}</span>`;
-    holdingsList.appendChild(row);
-  });
+
+  const renderSection = (title, items, accentClass) => {
+    if (!items.length) return '';
+    const rows = items.map((h) => {
+      const qty = accentClass === 'short' ? (h.shortedQty || 0) : (h.boughtQty || 0);
+      const value = Number(h.value || 0);
+      return `<div class="flex-between holding-row"><span>${h.icon || ''} ${h.name || 'Unknown'} <span class="holding-badge ${accentClass}">x${qty} ${accentClass === 'short' ? 'short' : 'long'}</span></span><span>₹${value.toLocaleString()}</span></div>`;
+    }).join('');
+    return `<div class="holdings-section"><div class="holdings-section-title">${title}</div>${rows}</div>`;
+  };
+
+  holdingsList.innerHTML = `${renderSection('Bought', boughtHoldings, 'long')}${renderSection('Shorted', shortedHoldings, 'short')}`;
 }
+
+// After updating portfolio, re-sync company controls so buy-to-cover enable state is refreshed
+// without waiting for the next state update.
+try {
+  if (typeof latestState !== 'undefined' && latestState) renderState(latestState);
+} catch (e) { /* ignore: renderState may not be defined during initial load */ }
 
 function signOut() {
   socketManager.disconnect();
@@ -263,7 +334,13 @@ function signOut() {
 }
 
 async function trade(companyId, action) {
-  const qty = document.getElementById(`qty-${companyId}`).value;
+  const qtyInput = document.getElementById(`qty-${companyId}`);
+  const rawQty = qtyInput ? qtyInput.value.trim() : '';
+  const qty = parseInt(rawQty, 10);
+  if (isNaN(qty) || qty < 1) {
+    showToast('Please enter a valid stock quantity (at least 1)', 'error');
+    return;
+  }
   loading.show();
   try {
     const res = await fetchWithTimeout('/api/investor/trade', {
@@ -277,8 +354,10 @@ async function trade(companyId, action) {
       ErrorLogger.warn('Trade failed: ' + data.error);
       return;
     }
+    currentPortfolio = data.portfolio;
     renderPortfolio(data.portfolio);
-    const actionText = action === 'buy' ? 'Bought' : action === 'sell' ? 'Sold' : 'Shorted';
+    if (latestState) renderState(latestState);
+    const actionText = action === 'buy' ? 'Bought' : action === 'sell' ? 'Sold' : action === 'buy_to_cover' ? 'Bought to cover' : 'Shorted';
     showToast(`${actionText} ${qty} share(s)!`, 'success');
     ErrorLogger.info(`Trade executed: ${actionText} ${qty} of ${companyId}`);
   } catch (err) {

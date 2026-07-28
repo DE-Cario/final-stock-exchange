@@ -6,77 +6,99 @@
       "name": "Canteen & Co.",
       "icon": "🍔",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "mess": {
       "id": "mess",
       "name": "Mess Hall Holdings",
       "icon": "🍛",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "wifi": {
       "id": "wifi",
       "name": "WiFi Networks Ltd.",
       "icon": "📶",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "sports": {
       "id": "sports",
       "name": "Groundsmen Sports Facilities",
       "icon": "⚽",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "library": {
       "id": "library",
       "name": "Library Inc.",
       "icon": "📚",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "bus": {
       "id": "bus",
       "name": "Bus Transport Corp.",
       "icon": "🚌",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "xerox": {
       "id": "xerox",
       "name": "Xerox & Stationery Co.",
       "icon": "🖨️",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "placement": {
       "id": "placement",
       "name": "Placement Cell Ventures",
       "icon": "💼",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "fest": {
       "id": "fest",
       "name": "Fest & Events Co.",
       "icon": "🎉",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "attendance": {
       "id": "attendance",
       "name": "Attendance Watch Holdings",
       "icon": "📋",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     },
     "av": {
       "id": "av",
       "name": "AV & Projector Services",
       "icon": "📽️",
       "startPrice": 100,
-      "price": 100
+      "price": 100,
+      "totalShares": 10000,
+      "adminAllocation": 5000
     }
   },
   "calendar": [
@@ -183,5 +205,9 @@
   "news": [],
   "surpriseEvents": [],
   "teams": {},
-  "nextTeamNum": 1
+  "nextTeamNum": 1,
+  "setup2Config": null,
+  "setup2Active": false,
+  "adminHoldings": {},
+  "adminCash": null
 }

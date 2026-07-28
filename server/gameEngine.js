@@ -22,6 +22,7 @@ const FEE_RATE = 0.01; // 1% per trade
 const MAX_SURPRISE_PCT = 30; // cap on any single surprise event
 const PRICE_FLOOR = 10; // ₹ minimum price per share
 const STARTING_CASH = 50000;
+const SETUP2_TRADE_MOVE_PCT = 1; // setup-2 price move per successful buy/sell
 
 function buildDefaultState() {
   const companies = {};
@@ -31,7 +32,9 @@ function buildDefaultState() {
       name: c.name,
       icon: c.icon,
       startPrice: c.price,
-      price: c.price
+      price: c.price,
+      totalShares: 10000,
+      adminAllocation: 5000
     };
   });
   return {
@@ -50,7 +53,11 @@ function buildDefaultState() {
     news: [],
     surpriseEvents: [],
     teams: {}, // teamId -> team record
-    nextTeamNum: 1
+    nextTeamNum: 1,
+    setup2Config: null,
+    setup2Active: false,
+    adminHoldings: {},
+    adminCash: null
   };
 }
 
@@ -84,14 +91,180 @@ class GameEngine {
     saveState(this.state);
   }
 
+  persistSync() {
+    saveStateSync(this.state);
+  }
+
+  setSetup2Config(config) {
+    if (!config || !config.hasOwnProperty('companies') || !config.hasOwnProperty('calendar')) {
+      return { ok: false, error: 'Setup-2 config requires companies and calendar' };
+    }
+
+    const fallbackCompanies = Object.values(this.state.companies || {}).map((company) => ({
+      id: company.id,
+      name: company.name,
+      icon: company.icon || '🏢',
+      price: 100,
+      totalShares: 10000,
+      adminAllocation: 5000
+    }));
+
+    const sourceCompanies = Array.isArray(config.companies) && config.companies.length > 0
+      ? config.companies
+      : fallbackCompanies;
+
+    const normalizedCompanies = sourceCompanies.map((company) => {
+      const price = Number(company.price || 100);
+      const totalShares = Number(company.totalShares || 10000);
+      const adminAllocation = Math.min(totalShares, Math.max(0, Number(company.adminAllocation || Math.floor(totalShares * 0.5))));
+      return {
+        id: String(company.id || `co_${Math.random().toString(36).slice(2, 8)}`),
+        name: String(company.name || 'Company'),
+        icon: company.icon || '🏢',
+        price: price > 0 ? price : 100,
+        totalShares: totalShares > 0 ? totalShares : 10000,
+        adminAllocation
+      };
+    });
+
+    const sourceCalendar = Array.isArray(config.calendar) && config.calendar.length > 0
+      ? config.calendar
+      : Array.from({ length: 5 }, (_, idx) => ({ label: `Round ${idx + 1}`, durationMinutes: 5, moves: [] }));
+
+    const normalizedCalendar = sourceCalendar.slice(0, 5).map((block, idx) => ({
+      label: block.label || `Round ${idx + 1}`,
+      durationMinutes: Math.max(1, Number(block.durationMinutes || 5)),
+      moves: []
+    }));
+
+    this.state.setup2Config = {
+      companies: normalizedCompanies,
+      calendar: normalizedCalendar
+    };
+    this.state.setup2Active = false;
+    this.state.adminHoldings = {};
+    this.state.adminCash = null;
+    this.persist();
+    return { ok: true };
+  }
+
+  getAdminPortfolio() {
+    const holdings = Object.entries(this.state.adminHoldings || {})
+      .filter(([, qty]) => Number(qty) > 0)
+      .map(([companyId, qty]) => {
+        const company = this.state.companies[companyId];
+        if (!company) return null;
+        const currentPrice = Math.round(company.price * 100) / 100;
+        return {
+          companyId,
+          name: company.name,
+          icon: company.icon,
+          boughtQty: Number(qty),
+          shortedQty: 0,
+          netQty: Number(qty),
+          currentPrice,
+          value: Math.round(Number(qty) * currentPrice * 100) / 100
+        };
+      })
+      .filter(Boolean);
+
+    const holdingsValue = holdings.reduce((sum, item) => sum + item.value, 0);
+    return {
+      cash: this.state.adminCash === null || this.state.adminCash === undefined ? Infinity : this.state.adminCash,
+      holdings,
+      holdingsValue: Math.round(holdingsValue * 100) / 100,
+      totalValue: Infinity
+    };
+  }
+
+  tradeAdmin(companyId, action, qty) {
+    const company = this.state.companies[companyId];
+    if (!company) return { ok: false, error: 'Company not found' };
+    qty = parseInt(qty, 10);
+    if (!qty || qty <= 0) return { ok: false, error: 'Quantity must be a positive whole number' };
+    if (action !== 'buy' && action !== 'sell') return { ok: false, error: 'Invalid action' };
+
+    const currentHoldings = Number(this.state.adminHoldings[companyId] || 0);
+    if (action === 'buy') {
+      const totalLongs = this._getCompanyLongHoldings(companyId);
+      const totalShares = Number(company.totalShares || 10000);
+      if (totalLongs + qty > totalShares) {
+        return { ok: false, error: 'Not enough shares available' };
+      }
+      this.state.adminHoldings[companyId] = currentHoldings + qty;
+    } else if (action === 'sell') {
+      if (currentHoldings < qty) return { ok: false, error: 'Admin does not own that many shares' };
+      this.state.adminHoldings[companyId] = currentHoldings - qty;
+    }
+
+    this._applySupplyDemandPriceMove(company, action, qty);
+
+    this.persist();
+    this._broadcastLeaderboard();
+    this._broadcastState();
+    return { ok: true, portfolio: this.getAdminPortfolio() };
+  }
+
+  startSetup2Game() {
+    if (!this.state.setup2Config) return { ok: false, error: 'Setup-2 config not saved yet' };
+    if (this.state.status !== 'lobby') return { ok: false, error: 'Game already started' };
+
+    const companies = {};
+    this.state.setup2Config.companies.forEach((company) => {
+      companies[company.id] = {
+        id: company.id,
+        name: company.name,
+        icon: company.icon || '🏢',
+        startPrice: company.price,
+        price: company.price,
+        totalShares: company.totalShares,
+        adminAllocation: company.adminAllocation
+      };
+    });
+
+    this.state.companies = companies;
+    this.state.calendar = this.state.setup2Config.calendar;
+    this.state.durationMinutesPlanned = this.state.calendar.reduce((sum, block) => sum + block.durationMinutes, 0);
+    this.state.setup2Active = true;
+    this.state.currentBlockIndex = -1;
+    this.state.blockStartedAt = null;
+    this.state.blockDriftStep = {};
+    this.state.blockTicksRemaining = 0;
+    this.state.blockHistory = [];
+    this.state.sessionStartedAt = Date.now();
+    this.state.pausedAt = null;
+    this.state.totalPausedMs = 0;
+    this.state.news = [];
+    this.state.surpriseEvents = [];
+    this.state.teams = {};
+    this.state.nextTeamNum = 1;
+    this.state.adminHoldings = {};
+    this.state.adminCash = null;
+    Object.values(companies).forEach((company) => {
+      this.state.adminHoldings[company.id] = company.adminAllocation || Math.floor((company.totalShares || 10000) * 0.5);
+    });
+
+    this.state.status = 'running';
+    this._startBlock(0);
+    this._startTicking();
+    this._pushNews('🔔 Setup-2 market is open! Trading has begun.');
+    this.persist();
+    return { ok: true };
+  }
+
   // ---------- public state for investor/projector views ----------
   getPublicState() {
     const s = this.state;
     const block = s.currentBlockIndex >= 0 ? s.calendar[s.currentBlockIndex] : null;
     let timeRemainingMs = null;
-    if (block && s.blockStartedAt && s.status === 'running') {
-      const elapsed = Date.now() - s.blockStartedAt;
-      timeRemainingMs = Math.max(0, block.durationMinutes * 60000 - elapsed);
+    if (block && s.blockStartedAt) {
+      if (s.status === 'running') {
+        const elapsed = Date.now() - s.blockStartedAt;
+        timeRemainingMs = Math.max(0, block.durationMinutes * 60000 - elapsed);
+      } else if (s.status === 'paused' && s.pausedAt) {
+        const elapsed = s.pausedAt - s.blockStartedAt;
+        timeRemainingMs = Math.max(0, block.durationMinutes * 60000 - elapsed);
+      }
     }
     const companies = Object.values(s.companies).map((c) => {
       const blockStart = this._currentBlockStartPrice(c.id);
@@ -118,11 +291,20 @@ class GameEngine {
 
   _currentBlockStartPrice(companyId) {
     const s = this.state;
-    if (s.currentBlockIndex < 0) return s.companies[companyId].startPrice;
+    if (!s.companies[companyId]) return 100;
+    if (s.currentBlockIndex < 0) return s.companies[companyId].startPrice || 100;
     const hist = s.blockHistory[s.currentBlockIndex];
-    if (hist) return hist.startPrices[companyId];
-    // block in progress, not yet in history -> use stored snapshot
-    return s._inProgressStartPrices ? s._inProgressStartPrices[companyId] : s.companies[companyId].price;
+    if (hist && hist.startPrices && hist.startPrices[companyId]) return hist.startPrices[companyId];
+    if (s._inProgressStartPrices && s._inProgressStartPrices[companyId]) return s._inProgressStartPrices[companyId];
+    return s.companies[companyId].startPrice || s.companies[companyId].price || 100;
+  }
+
+  _currentSeasonalMovePct(companyId) {
+    const s = this.state;
+    const block = s.currentBlockIndex >= 0 ? s.calendar[s.currentBlockIndex] : null;
+    if (!block || !Array.isArray(block.moves)) return 0;
+    const move = block.moves.find((entry) => entry.companyId === companyId);
+    return Number(move?.pct || 0);
   }
 
   // ---------- team management ----------
@@ -217,6 +399,19 @@ class GameEngine {
     return { ok: true };
   }
 
+  updateTeamCapital(teamId, newCapital) {
+    const team = this.state.teams[teamId];
+    if (!team) return { ok: false, error: "Team not found" };
+    const capital = parseFloat(newCapital);
+    if (isNaN(capital)) {
+      return { ok: false, error: "Invalid capital amount" };
+    }
+    team.cash = capital;
+    this.persist();
+    this._broadcastLeaderboard();
+    return { ok: true };
+  }
+
   removeTeam(teamId) {
     if (!this.state.teams[teamId]) return { ok: false, error: 'Team not found' };
     delete this.state.teams[teamId];
@@ -225,18 +420,60 @@ class GameEngine {
     return { ok: true };
   }
 
+  _getHoldingBreakdown(team, companyId) {
+    const raw = team.holdings[companyId];
+    if (typeof raw === 'number') {
+      if (raw < 0) return { long: 0, short: Math.abs(raw) };
+      return { long: raw, short: 0 };
+    }
+    if (raw && typeof raw === 'object') {
+      return {
+        long: Math.max(0, parseInt(raw.long || 0, 10)),
+        short: Math.max(0, parseInt(raw.short || 0, 10))
+      };
+    }
+    return { long: 0, short: 0 };
+  }
+
+  _setHoldingBreakdown(team, companyId, { long, short }) {
+    const normalizedLong = Math.max(0, parseInt(long, 10) || 0);
+    const normalizedShort = Math.max(0, parseInt(short, 10) || 0);
+    if (!normalizedLong && !normalizedShort) {
+      delete team.holdings[companyId];
+      return;
+    }
+    team.holdings[companyId] = { long: normalizedLong, short: normalizedShort };
+  }
+
+  _getCompanyLongHoldings(companyId) {
+    const company = this.state.companies[companyId];
+    if (!company) return 0;
+    let total = Number(this.state.adminHoldings[companyId] || 0);
+    Object.values(this.state.teams).forEach((team) => {
+      const { long } = this._getHoldingBreakdown(team, companyId);
+      total += long;
+    });
+    return total;
+  }
+
   getTeamPortfolio(teamId) {
     const team = this.state.teams[teamId];
     if (!team) return null;
-    const holdings = Object.entries(team.holdings).map(([companyId, qty]) => {
+    const holdings = Object.keys(team.holdings).map((companyId) => {
       const company = this.state.companies[companyId];
+      const { long, short } = this._getHoldingBreakdown(team, companyId);
+      const netQty = long - short;
+      const currentPrice = Math.round(company.price * 100) / 100;
+      const value = Math.round(netQty * currentPrice * 100) / 100;
       return {
         companyId,
         name: company.name,
         icon: company.icon,
-        qty,
-        currentPrice: Math.round(company.price * 100) / 100,
-        value: Math.round(qty * company.price * 100) / 100
+        boughtQty: long,
+        shortedQty: short,
+        netQty,
+        currentPrice,
+        value
       };
     });
     const holdingsValue = holdings.reduce((a, h) => a + h.value, 0);
@@ -252,6 +489,49 @@ class GameEngine {
     };
   }
 
+  _applySupplyDemandPriceMove(company, action, qty) {
+    if (!company || !qty || qty <= 0) return;
+    const totalShares = Number(company.totalShares || 10000);
+    const adminHeld = Number(this.state.adminHoldings[company.id] || 0);
+    const publicFloat = Math.max(1000, totalShares - adminHeld);
+
+    const fractionOfFloat = qty / publicFloat;
+    const floatMovePct = fractionOfFloat * 100;
+
+    // Scale trade impact with the traded share of the float.
+    // Small trades barely move the price, while 50-100 share trades are visible.
+    let pctMove = Math.pow(floatMovePct, 0.85);
+    if (pctMove < 0.02) pctMove = 0.02;
+    if (pctMove > 20) pctMove = 20;
+
+    const seasonalPct = this._currentSeasonalMovePct(company.id);
+    if (seasonalPct !== 0) {
+      const seasonalStrength = Math.min(1.5, Math.abs(seasonalPct) / 20);
+      const sameDirection = (action === 'buy' || action === 'buy_to_cover')
+        ? seasonalPct > 0
+        : (seasonalPct < 0);
+      pctMove *= 1 + seasonalStrength;
+      pctMove *= sameDirection ? 1.25 : 0.85;
+    }
+
+    let direction = 1;
+    if (action === 'sell' || action === 'short') {
+      direction = -1;
+    } else if (action === 'buy' || action === 'buy_to_cover') {
+      direction = 1;
+    }
+
+    const newPrice = company.price * (1 + (direction * (pctMove / 100)));
+    company.price = Math.max(PRICE_FLOOR, Math.round(newPrice * 100) / 100);
+  }
+
+  _applySetup2TradePriceMove(company, action) {
+    if (!this.state.setup2Active || !company) return;
+    if (action !== 'buy' && action !== 'sell') return;
+    const pctMove = action === 'buy' ? SETUP2_TRADE_MOVE_PCT : -SETUP2_TRADE_MOVE_PCT;
+    company.price = Math.max(PRICE_FLOOR, company.price * (1 + pctMove / 100));
+  }
+
   // ---------- trading ----------
   trade(teamId, companyId, action, qty) {
     const team = this.state.teams[teamId];
@@ -264,12 +544,18 @@ class GameEngine {
 
     const price = company.price;
     if (action === 'buy') {
+      const totalLongs = this._getCompanyLongHoldings(companyId);
+      const totalShares = Number(company.totalShares || 10000);
+      if (totalLongs + qty > totalShares) {
+        return { ok: false, error: 'Not enough shares available' };
+      }
       const cost = qty * price;
       const fee = cost * FEE_RATE;
       const total = cost + fee;
       if (team.cash < total) return { ok: false, error: 'Insufficient funds' };
       team.cash -= total;
-      team.holdings[companyId] = (team.holdings[companyId] || 0) + qty;
+      const { long, short } = this._getHoldingBreakdown(team, companyId);
+      this._setHoldingBreakdown(team, companyId, { long: long + qty, short });
       team.trades.push({
         timestamp: Date.now(),
         companyId,
@@ -280,14 +566,13 @@ class GameEngine {
         blockIndex: this.state.currentBlockIndex
       });
     } else if (action === 'sell') {
-      const owned = team.holdings[companyId] || 0;
-      if (qty > owned) return { ok: false, error: 'You do not own that many shares' };
+      const { long, short } = this._getHoldingBreakdown(team, companyId);
+      if (qty > long) return { ok: false, error: 'You do not own that many shares' };
       const proceeds = qty * price;
       const fee = proceeds * FEE_RATE;
       const net = proceeds - fee;
       team.cash += net;
-      team.holdings[companyId] -= qty;
-      if (team.holdings[companyId] === 0) delete team.holdings[companyId];
+      this._setHoldingBreakdown(team, companyId, { long: long - qty, short });
       team.trades.push({
         timestamp: Date.now(),
         companyId,
@@ -302,8 +587,8 @@ class GameEngine {
       const fee = proceeds * FEE_RATE;
       const net = proceeds - fee;
       team.cash += net;
-      team.holdings[companyId] = (team.holdings[companyId] || 0) - qty;
-      if (team.holdings[companyId] === 0) delete team.holdings[companyId];
+      const { long, short } = this._getHoldingBreakdown(team, companyId);
+      this._setHoldingBreakdown(team, companyId, { long, short: short + qty });
       team.trades.push({
         timestamp: Date.now(),
         companyId,
@@ -313,19 +598,41 @@ class GameEngine {
         fee: Math.round(fee * 100) / 100,
         blockIndex: this.state.currentBlockIndex
       });
+    } else if (action === 'buy_to_cover') {
+      const { long, short } = this._getHoldingBreakdown(team, companyId);
+      if (qty > short) return { ok: false, error: 'You do not have that many shorted shares' };
+      const cost = qty * price;
+      const fee = cost * FEE_RATE;
+      const total = cost + fee;
+      if (team.cash < total) return { ok: false, error: 'Insufficient funds' };
+      team.cash -= total;
+      this._setHoldingBreakdown(team, companyId, { long, short: short - qty });
+      team.trades.push({
+        timestamp: Date.now(),
+        companyId,
+        action: 'buy_to_cover',
+        qty,
+        price,
+        fee: Math.round(fee * 100) / 100,
+        blockIndex: this.state.currentBlockIndex
+      });
     } else {
       return { ok: false, error: 'Invalid action' };
     }
+
+    this._applySupplyDemandPriceMove(company, action, qty);
     this.persist();
     this._broadcastLeaderboard();
+    this._broadcastState();
     return { ok: true, portfolio: this.getTeamPortfolio(teamId) };
   }
 
   // ---------- leaderboard & awards ----------
   computeLeaderboard() {
     const rows = Object.values(this.state.teams).map((team) => {
-      const holdingsValue = Object.entries(team.holdings).reduce((sum, [companyId, qty]) => {
-        return sum + qty * this.state.companies[companyId].price;
+      const holdingsValue = Object.entries(team.holdings).reduce((sum, [companyId, holding]) => {
+        const { long, short } = this._getHoldingBreakdown(team, companyId);
+        return sum + ((long - short) * this.state.companies[companyId].price);
       }, 0);
       return {
         teamId: team.teamId,
@@ -397,15 +704,26 @@ class GameEngine {
     this.state.calendar = newCalendar;
     this.state.durationMinutesPlanned = newCalendar.reduce((a, b) => a + b.durationMinutes, 0);
     this.persist();
+    this._broadcastState();
   }
 
   replaceCompanies(newCompanies) {
     const companies = {};
     newCompanies.forEach((c) => {
-      companies[c.id] = { id: c.id, name: c.name, icon: c.icon || '🏢', startPrice: c.price, price: c.price };
+      const totalShares = Number(c.totalShares || 10000);
+      const price = Number(c.price || 100);
+      companies[c.id] = {
+        id: c.id,
+        name: c.name,
+        icon: c.icon || '🏢',
+        startPrice: price,
+        price: price,
+        totalShares: totalShares > 0 ? totalShares : 10000
+      };
     });
     this.state.companies = companies;
     this.persist();
+    this._broadcastState();
   }
 
   // ---------- admin: game flow control ----------
@@ -424,6 +742,8 @@ class GameEngine {
     this._startBlock(0);
     this._startTicking();
     this._pushNews('🔔 Market is open! Trading has begun.');
+    this.persist();
+    this._broadcastState();
     return { ok: true };
   }
 
@@ -433,6 +753,8 @@ class GameEngine {
     this.state.pausedAt = Date.now();
     this._stopTicking();
     this._pushNews('⏸️ Market paused by admin.');
+    this.persist();
+    this._broadcastState();
     return { ok: true };
   }
 
@@ -445,6 +767,8 @@ class GameEngine {
     this.state.pausedAt = null;
     this._startTicking();
     this._pushNews('▶️ Market resumed.');
+    this.persist();
+    this._broadcastState();
     return { ok: true };
   }
 
